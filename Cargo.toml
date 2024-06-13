@@ -1,0 +1,33 @@
+[package]
+name = "rrh2"
+version = "2.0.0-beta-1"
+repository = "https://github.com/tamada/rrh2"
+readme = "README.md"
+authors = [
+    "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
+]
+license = "Apache License v2.0"
+description = "Remote Repositories Head/Repositories, Ready to Hack"
+categories = ["command-line-utilities", "git"]
+edition = "2021"
+
+[dependencies]
+atoi = "2.0.0"
+chrono = { version = "0.4.38", features = ["serde"] }
+chrono-humanize = "0.2.3"
+chrono-tz = "0.9.0"
+clap = { version = "4.5.4", features = ["derive"] }
+dirs = "5.0.1"
+dotenv = "0.15.0"
+git2 = "0.18.3"
+serde = { version = "1.0.202", features = ["derive"] }
+serde_json = "1.0.117"
+tabled = "0.15.0"
+termion = "4.0.0"
+
+[build-dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+clap_complete = "4.5.2"
+toml = "0.8.12"
+serde_json = "1.0.117"
+git2 = "0.18.3"

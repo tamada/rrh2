@@ -1,0 +1,24 @@
+database_path = "testdata/database.json"
+user_home = read("env:HOME")
+home = "\(user_home)/.config/rrh2"
+envs {
+    auto_create_group = true
+    auto_delete_group = true
+    last_access_reload_duration_secs = 24 * 60 * 60
+    clone_directory = "."
+    default_group = "no-group"
+    sort_on_update = true
+
+    // available values: blank, empty, ascii, ascii_rounded, blank, markdown, sharp,
+    //     modern, modern_rounded, re_structured_text, dots, extended, rounded
+    // case insensitive. default is blank. invalid value will be ignored and use default value.
+    print_list_style = "blank"
+
+    // available values: relative, humanize, iso8601, rfc3339, rfc2822, strftime(<format>)
+    // format for strftime is shown in https://dtantsur.github.io/rust-openstack/chrono/format/strftime/index.html
+    last_access_format = "humanize"
+}
+aliases {
+    ["hello"] = List("exec", "echo", "Hello, world!")
+    ["grlist"] = List("group", "list")
+}
