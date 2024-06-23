@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli::{Result, RrhError};
 use crate::db::{Database, RefDB};
-use crate::entities::{Group, Relation, Repository};
+use crate::entities::{Group, Relation, Repository, RepositoryWithGroups};
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -41,15 +41,24 @@ impl JsonDB {
 }
 
 impl RefDB for JsonDB {
-    fn find_repository(&self, id: String) -> Option<Repository> {
+    fn find_repository(&self, id: &str) -> Option<Repository> {
         self.repositories.iter().find(|r| r.id == id).cloned()
     }
 
-    fn find_group(&self, name: String) -> Option<Group> {
+    fn find_repository_with_groups(&self, id: &str) -> Option<RepositoryWithGroups> {
+        if let Some(repo) = self.find_repository(id) {
+            if let Ok(groups) = self.find_groups_of(id) {
+                return Some(RepositoryWithGroups { repo, groups })
+            }
+        }
+        None
+    }
+
+    fn find_group(&self, name: &str) -> Option<Group> {
         self.groups.iter().find(|g| g.name == name).cloned()
     }
 
-    fn find_groups_of(&self, id: String) -> Result<Vec<Group>> {
+    fn find_groups_of(&self, id: &str) -> Result<Vec<Group>> {
         let group_names = self
             .relations
             .iter()
@@ -58,14 +67,14 @@ impl RefDB for JsonDB {
             .collect::<Vec<_>>();
         let mut groups = Vec::new();
         for name in group_names {
-            if let Some(g) = self.find_group(name) {
+            if let Some(g) = self.find_group(&name) {
                 groups.push(g);
             }
         }
         Ok(groups)
     }
 
-    fn find_repositories_of(&self, group_name: String) -> Result<Vec<Repository>> {
+    fn find_repositories_of(&self, group_name: &str) -> Result<Vec<Repository>> {
         let repo_ids = self
             .relations
             .iter()
@@ -74,20 +83,20 @@ impl RefDB for JsonDB {
             .collect::<Vec<_>>();
         let mut repositories = Vec::new();
         for id in repo_ids {
-            if let Some(r) = self.find_repository(id) {
+            if let Some(r) = self.find_repository(&id) {
                 repositories.push(r);
             }
         }
         Ok(repositories)
     }
 
-    fn has_relation(&self, repo_id: String, group_name: String) -> bool {
+    fn has_relation(&self, repo_id: &str, group_name: &str) -> bool {
         self.relations
             .iter()
             .any(|r| r.id == repo_id && r.group == group_name)
     }
 
-    fn find_relation(&self, repo_id: String, group_name: String) -> Option<Relation> {
+    fn find_relation(&self, repo_id: &str, group_name: &str) -> Option<Relation> {
         self.relations
             .iter()
             .find(|r| r.id == repo_id && r.group == group_name)
@@ -102,7 +111,7 @@ impl RefDB for JsonDB {
         let mut result = HashMap::<String, Vec<Repository>>::new();
         let mut errs = Vec::<RrhError>::new();
         for group in self.groups.iter() {
-            match self.find_repositories_of(group.name.clone()) {
+            match self.find_repositories_of(&group.name) {
                 Ok(r) => _ = result.insert(group.name.clone(), r),
                 Err(e) => _ = errs.push(e),
             };
@@ -117,11 +126,11 @@ impl RefDB for JsonDB {
 
 impl Database for JsonDB {
     fn register(&mut self, r: Repository, group_names: Vec<String>) -> Result<()> {
-        if let Some(_) = self.find_repository(r.id.clone()) {
+        if let Some(_) = self.find_repository(&r.id) {
             return Err(RrhError::RepositoryExists(r.id.clone()));
         }
         for name in group_names.clone() {
-            if !self.find_group(name.clone()).is_none() {
+            if !self.find_group(&name).is_none() {
                 self.register_group(Group::new(name.clone()))?;
             }
         }
@@ -140,7 +149,7 @@ impl Database for JsonDB {
     }
 
     fn register_group(&mut self, g: Group) -> Result<()> {
-        if let Some(_) = self.find_group(g.name.clone()) {
+        if let Some(_) = self.find_group(&g.name) {
             return Err(RrhError::GroupExists(g.name.clone()));
         }
         self.groups.push(g);
@@ -168,7 +177,7 @@ impl Database for JsonDB {
     }
 
     fn relate(&mut self, id: String, group_name: String) -> Result<Relation> {
-        match self.find_relation(id.clone(), group_name.clone()) {
+        match self.find_relation(&id, &group_name) {
             Some(relation) => Ok(relation),
             None => {
                 let relation = Relation::new(id.clone(), group_name.clone());
@@ -193,8 +202,7 @@ impl Database for JsonDB {
     }
 
     fn delete_repository(&mut self, id: String) -> Result<()> {
-        let idx = self.repositories.iter().position(|r| r.id == id);
-        match idx {
+        match self.repositories.iter().position(|r| r.id == id) {
             Some(i) => {
                 self.repositories.remove(i);
                 delete_relation_all_for_repository(self, id.clone())
@@ -226,29 +234,38 @@ impl Database for JsonDB {
 }
 
 fn delete_relation_all_for_repository(db: &mut JsonDB, id: String) -> Result<()> {
-    let mut idxs = Vec::new();
-    for (i, r) in db.relations.iter().enumerate() {
+    let indexes = relation_indexes(db, |i, r| {
         if r.id == id {
-            idxs.push(i);
+            Some(i)
+        } else {
+            None
         }
-    }
-    for i in idxs {
+    });
+    for i in indexes {
         db.relations.remove(i);
     }
     Ok(())
 }
 
 fn delete_relation_all_for_group(db: &mut JsonDB, group_name: String) -> Result<()> {
-    let mut idxs = Vec::new();
-    for (i, r) in db.relations.iter().enumerate() {
+    let indexes = relation_indexes(db, |i, r| {
         if r.group == group_name {
-            idxs.push(i);
+            Some(i)
+        } else {
+            None
         }
-    }
-    for i in idxs {
+    });
+    for i in indexes {
         db.relations.remove(i);
     }
     Ok(())
+}
+
+fn relation_indexes<F>(db: &JsonDB, f: F) -> Vec<usize> 
+        where F: Fn(usize, &Relation) -> Option<usize> {
+    db.relations.iter().enumerate()
+            .filter_map(|(i, r)| f(i, r))
+            .collect::<Vec<usize>>()
 }
 
 #[cfg(test)]

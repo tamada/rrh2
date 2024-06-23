@@ -13,6 +13,7 @@ mod db;
 mod entities;
 mod external;
 mod terminal;
+mod utils;
 
 fn load_context(opts: &CliOpts) -> Result<config::Context> {
     if let Some(config) = &opts.config_file {
@@ -44,10 +45,7 @@ pub(crate) fn perform(opts: CliOpts) -> Result<()> {
         None => find_alias_or_external_command(&mut context, opts.args),
     };
     match store_flag {
-        Ok(true) => match context.store() {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        },
+        Ok(true) => context.store(),
         Ok(false) => Ok(()),
         Err(e) => Err(e),
     }
@@ -79,7 +77,8 @@ fn print_errors(e: RrhError) {
     match e {
         IO(e) => eprintln!("IO error: {}", e),
         Json(e) => eprintln!("JSON error: {}", e),
-        GitError(e) => eprintln!("Git error: {}", e),
+        Git(e) => eprintln!("Git error: {}", e),
+        Arguments(m) => eprintln!("arguments error: {}", m),
         GroupNotFound(name) => eprintln!("{}: group not found", name),
         RepositoryNotFound(name) => eprintln!("{}: repository not found", name),
         RelationNotFound(id, group) => {

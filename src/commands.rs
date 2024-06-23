@@ -3,8 +3,10 @@ use crate::config::Context;
 
 mod add;
 mod alias;
+mod init;
 mod list;
 mod exec;
+mod repository;
 
 pub fn perform_add(context: &mut Context, c: AddOpts) -> Result<bool> {
     add::perform_add(context, c)
@@ -23,7 +25,7 @@ pub fn perform_find(context: &Context, c: FindOpts) -> Result<bool> {
 }
 
 pub fn perform_exec(context: &mut Context, c: ExecOpts) -> Result<bool> {
-    exec::perform(context, c)
+    exec::perform_exec(context, c)
 }
 
 pub fn perform_export(context: &mut Context, c: ExportOpts) -> Result<bool> {
@@ -39,11 +41,11 @@ pub fn perform_list(context: &mut Context, c: RepositoryListOpts) -> Result<bool
 }
 
 pub fn perform_init(context: &mut Context, c: InitOpts) -> Result<bool> {
-    todo!();
+    init::perform(context, c)
 }
 
 pub fn perform_open(context: &mut Context, c: OpenOpts) -> Result<bool> {
-    todo!();
+    exec::perform_open(context, c)
 }
 
 pub fn perform_prune(context: &mut Context) -> Result<bool> {
@@ -51,7 +53,7 @@ pub fn perform_prune(context: &mut Context) -> Result<bool> {
 }
 
 pub fn perform_repository(context: &mut Context, c: RepositoryOpts) -> Result<bool> {
-    todo!();
+    repository::perform(context, c)
 }
 
 pub fn perform_recent(context: &Context, c: RecentOpts) -> Result<bool> {

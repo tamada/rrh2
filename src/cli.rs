@@ -15,7 +15,8 @@ pub enum RrhError {
     Arrays(Vec<RrhError>),
     IO(std::io::Error),
     Json(serde_json::Error),
-    GitError(git2::Error),
+    Git(git2::Error),
+    Arguments(String),
     Fatal(String),
     ExternalCommand(ExitStatus, String),
     Unknown,
@@ -41,16 +42,16 @@ pub(crate) struct CliOpts {
         value_name = "FILE",
         help = "Path to the configuration file"
     )]
-    pub config_file: Option<PathBuf>,
+    pub(crate) config_file: Option<PathBuf>,
 
     #[arg(short, long, help = "Verbose mode")]
-    pub verbose: bool,
+    pub(crate) verbose: bool,
 
     #[clap(subcommand)]
-    pub command: Option<RrhCommand>,
+    pub(crate) command: Option<RrhCommand>,
 
     #[arg(index = 1, help = "arguments")]
-    pub args: Vec<String>,
+    pub(crate) args: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -145,7 +146,7 @@ pub(crate) struct AddOpts {
         value_name = "REPOSITORIES",
         required = true
     )]
-    pub paths: Vec<PathBuf>,
+    pub(crate) paths: Vec<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -156,10 +157,10 @@ pub(crate) struct RepositoryOption {
         value_name = "ID",
         help = "Specify the repository ID"
     )]
-    pub repository_id: Option<String>,
+    pub(crate) repository_id: Option<String>,
 
     #[clap(flatten, help = "register repositories to the groups.")]
-    pub groups: GroupSpecifier,
+    pub(crate) groups: GroupSpecifier,
 
     #[arg(
         short = 'd',
@@ -167,19 +168,19 @@ pub(crate) struct RepositoryOption {
         value_name = "DESCRIPTION",
         help = "Specify the description of the repository"
     )]
-    pub description: Option<String>,
+    pub(crate) description: Option<String>,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct GroupSpecifier {
     #[arg(short, long, value_name = "GROUPS")]
-    pub group_names: Vec<String>,
+    pub(crate) group_names: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct RepositorySpecifier {
     #[arg(short, long, value_name = "REPO_IDS")]
-    pub repository_ids: Vec<String>,
+    pub(crate) repository_ids: Vec<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -213,7 +214,7 @@ pub(crate) struct CloneOpts {
     pub(crate) dest_dir: PathBuf,
 
     #[clap(flatten)]
-    pub repo: RepositoryOption,
+    pub(crate) repo: RepositoryOption,
 
     #[arg(help = "repository URL", value_name = "REPO_URL")]
     pub(crate) repo_url: String,
@@ -225,19 +226,19 @@ pub(crate) struct ExecOpts {
         flatten,
         help = "specify the groups for executing the commands on the corresponding repositories"
     )]
-    pub groups: GroupSpecifier,
+    pub(crate) groups: GroupSpecifier,
 
     #[clap(flatten, help = "specify the repositories for executing the commands")]
-    pub repositories: RepositorySpecifier,
+    pub(crate) repositories: RepositorySpecifier,
 
     #[clap(long = "no-header", help = "do not show the header")]
-    pub no_header: bool,
+    pub(crate) no_header: bool,
 
     #[arg(
         help = "command and its arguments for the alias",
         value_name = "COMMANDS"
     )]
-    pub arguments: Vec<String>,
+    pub(crate) arguments: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -249,42 +250,41 @@ pub(crate) struct ExportOpts {
         value_name = "FILE",
         default_value = "-"
     )]
-    dest: String,
+    pub(crate) dest: String,
 
     #[arg(short, long, help = "overwrite mode")]
-    overwrite: bool,
+    pub(crate) overwrite: bool,
 
     #[arg(
         long = "no-replace-home",
         help = "does not replace the home directory to the word \"${HOME}\""
     )]
-    no_replace_home: bool,
+    pub(crate) no_replace_home: bool,
 
     #[arg(short, long, help = "indent the resultant json file")]
-    indent: bool,
+    pub(crate) indent: bool,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct FindOpts {
     #[arg(
-        short,
         long,
         help = "This flag turns the keywords into the AND condition. (default is OR)"
     )]
-    and: bool,
+    pub(crate) and: bool,
 
     #[arg(
         help = "keywords for finding the repositories",
         value_name = "KEYWORDS",
         required = true
     )]
-    keywords: Vec<String>,
+    pub(crate) keywords: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct GroupOpts {
     #[clap(subcommand)]
-    subcmd: GroupSubCommand,
+    pub(crate) subcmd: GroupSubCommand,
 }
 
 #[derive(Parser, Debug)]
@@ -308,17 +308,17 @@ pub(crate) enum GroupSubCommand {
 #[derive(Parser, Debug)]
 pub(crate) struct GroupAddOpts {
     #[arg(short, long, help = "specify the abbrev flag")]
-    abbrev: bool,
+    pub(crate) abbrev: bool,
 
     #[arg(short, long, help = "specify the note of group", value_name = "NOTE")]
-    note: Option<String>,
+    pub(crate) note: Option<String>,
 
     #[arg(
         help = "specify the group names",
         required = true,
         value_name = "GROUPS"
     )]
-    names: Vec<String>,
+    pub(crate) names: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -328,16 +328,16 @@ pub(crate) struct GroupInfoOpts {
         value_name = "GROUPS",
         required = true
     )]
-    names: Vec<String>,
+    pub(crate) names: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct GroupListOpts {
-    #[arg(short, long, help = "specify the entries")]
-    entries: Vec<GroupEntry>,
+    #[arg(short, long, help = "specify the entries", use_value_delimiter = true)]
+    pub(crate) entries: Vec<GroupEntry>,
 }
 
-#[derive(Parser, Debug, ValueEnum, Clone)]
+#[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Eq)]
 pub(crate) enum GroupEntry {
     Name,
     Abbrev,
@@ -348,7 +348,7 @@ pub(crate) enum GroupEntry {
 #[derive(Parser, Debug)]
 pub(crate) struct GroupRemoveOpts {
     #[arg(short, long, help = "force remove the group")]
-    force: bool,
+    pub(crate) force: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -359,7 +359,7 @@ pub(crate) struct GroupUpdateOpts {
         help = "specify the abbrev flag",
         value_name = "ABBREV_FLAG"
     )]
-    abbrev: Option<bool>,
+    pub(crate) abbrev: Option<bool>,
 
     #[arg(
         short = 'N',
@@ -367,30 +367,30 @@ pub(crate) struct GroupUpdateOpts {
         help = "specify the note of group",
         value_name = "NOTE"
     )]
-    note: Option<String>,
+    pub(crate) note: Option<String>,
 
     #[arg(
-        short,
-        long,
+        short = 'r',
+        long = "rename-to",
         help = "specify the new group name",
         value_name = "NEW_NAME"
     )]
-    names: Option<String>,
+    pub(crate) rename_to: Option<String>,
 
     #[arg(help = "specify the group name", required = true, value_name = "GROUP")]
-    name: String,
+    pub(crate) name: String,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct InitOpts {
     #[arg(long, help = "not generate the cdrrh function")]
-    without_cdrrh: bool,
+    pub(crate) without_cdrrh: bool,
 
     #[arg(long, help = "not generate the rrhpeco function")]
-    without_rrhpeco: bool,
+    pub(crate) without_rrhpeco: bool,
 
     #[arg(long, help = "not generate the rrhfzf function")]
-    without_rrhfzf: bool,
+    pub(crate) without_rrhfzf: bool,
 
     #[arg(
         index = 1,
@@ -398,10 +398,10 @@ pub(crate) struct InitOpts {
         help = "specify the target shell",
         required = true
     )]
-    shell_name: ShellName,
+    pub(crate) shell_name: ShellName,
 }
 
-#[derive(Parser, Debug, ValueEnum, Clone)]
+#[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Eq)]
 pub(crate) enum ShellName {
     Bash,
     Zsh,
@@ -412,18 +412,27 @@ pub(crate) enum ShellName {
 
 #[derive(Parser, Debug)]
 pub(crate) struct OpenOpts {
-    #[arg(short, long, help = "Open folders.")]
-    folder: bool,
-    #[arg(short, long, help = "Open web pages.")]
-    webpage: bool,
-    #[arg(short, long, help = "Open project pages.")]
-    project: bool,
+    #[clap(short = 't', long = "target", value_name = "TARGET", required = false,
+        help = "Open the folder, web page or project page of the given repositories",
+        value_enum, default_value_t = OpenTarget::Folder
+    )]
+    pub(crate) target: OpenTarget,
+
+    #[clap(value_name = "REPOSITORY/GROUP", required = true, index = 1, help = "specify the open target repositories or groups")]
+    pub(crate) args: Vec<String>,
+}
+
+#[derive(Debug, ValueEnum, PartialEq, Clone)]
+pub(crate) enum OpenTarget {
+    Folder,
+    Webpage,
+    Project,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryOpts {
     #[clap(subcommand)]
-    subcmd: RepositorySubCommand,
+    pub(crate) subcmd: RepositorySubCommand,
 }
 
 #[derive(Parser, Debug)]
@@ -441,19 +450,41 @@ pub(crate) enum RepositorySubCommand {
 }
 
 #[derive(Parser, Debug)]
+pub(crate) struct RepositoryPrintingOpts {
+    #[arg(long = "no-header", help = "do not show the header", default_value_t = false)]
+    pub(crate) no_headers: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "specify the entries",
+        value_name = "ENTRIES",
+        rename_all = "kebab-case",
+        use_value_delimiter = true,
+    )]
+    pub(crate) entries: Vec<RepositoryEntry>,
+
+    #[arg(short, long, help = "specify the result format", value_name = "FORMAT")]
+    pub(crate) format: Option<String>,
+}
+
+#[derive(Parser, Debug)]
 pub(crate) struct RepositoryInfoOpts {
+    #[clap(flatten)]
+    pub(crate) printOpts: RepositoryPrintingOpts,
+
     #[arg(
         help = "specify the ids for the target repositories",
         required = true,
         value_name = "REPOSITORY_ID"
     )]
-    ids: Vec<String>,
+    pub(crate) ids: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryListOpts {
-    #[arg(short, long, help = "specify the entries", value_name = "ENTRIES", rename_all = "kebab-case", use_value_delimiter = true)]
-    pub(crate) entries: Vec<RepositoryEntry>,
+    #[clap(flatten)]
+    pub(crate) printOpts: RepositoryPrintingOpts,
 
     #[arg(
         help = "specify the group names for listing the repositories",
@@ -474,8 +505,8 @@ pub(crate) enum RepositoryEntry {
 
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryRemoveOpts {
-    #[arg(short, long, help = "force remove the repository")]
-    force: bool,
+    #[arg(index = 1, help = "specify the ids for the target repositories")]
+    pub(crate) ids: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -486,7 +517,7 @@ pub(crate) struct RepositoryUpdateOpts {
         help = "specify the new description",
         value_name = "DESCRIPTION"
     )]
-    description: Option<String>,
+    pub(crate) description: Option<String>,
 
     #[arg(
         short,
@@ -494,33 +525,35 @@ pub(crate) struct RepositoryUpdateOpts {
         help = "specify the new repository path",
         value_name = "REPOSITORY_PATH"
     )]
-    path: Option<PathBuf>,
+    pub(crate) path: Option<PathBuf>,
 
     #[arg(short, long, help = "specify the new repository id", value_name = "ID")]
-    id: Option<String>,
+    pub(crate) id: Option<String>,
 
     #[arg(
         short = 'g',
         long = "groups",
         help = "specify the group names for appending",
-        value_name = "GROUPS"
+        value_name = "GROUPS",
+        use_value_delimiter = true
     )]
-    groups: Vec<String>,
+    pub(crate) groups: Vec<String>,
 
     #[arg(
         short = 'G',
         long = "new-groups",
-        help = "specify the new group names",
-        value_name = "GROUPS"
+        help = "specify the new group names for replacing",
+        value_name = "GROUPS",
+        use_value_delimiter = true
     )]
-    new_groups: Vec<String>,
+    pub(crate) new_groups: Vec<String>,
 
     #[arg(
-        help = "specify the id for the target repository",
+        help = "specify the id of the target repository",
         required = true,
         value_name = "REPOSITORY_ID"
     )]
-    repository_id: String,
+    pub(crate) repository_id: String,
 }
 
 #[derive(Parser, Debug)]
@@ -531,5 +564,5 @@ pub(crate) struct RecentOpts {
         help = "specify the number of recent repositories",
         value_name = "NUMBER"
     )]
-    number: Option<usize>,
+    pub(crate) number: Option<usize>,
 }

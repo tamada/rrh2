@@ -74,6 +74,26 @@ impl RepositoryEntry {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct RepositoryWithGroups {
+    pub repo: Repository,
+    pub groups: Vec<Group>,
+}
+
+impl RepositoryWithGroups {
+    pub fn last_access_string(&self, config: &config::Config) -> String {
+        self.repo.last_access_string(config)
+    }
+
+    pub fn last_access(&mut self, c: &Config) -> Option<SystemTime> {
+        self.repo.last_access(c)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, Group> {
+        self.groups.iter()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Repository {
     pub id: String,
     pub path: PathBuf,
@@ -82,7 +102,7 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn new_with(id: String, path: PathBuf, description: Option<String>) -> Self {
+    pub fn new(id: String, path: PathBuf, description: Option<String>) -> Self {
         if let Ok(m) = path.metadata() {
             Self {
                 id,
@@ -100,17 +120,13 @@ impl Repository {
         }
     }
 
-    pub fn new(name: String, path: PathBuf) -> Self {
-        Self::new_with(name, path, None)
-    }
-
     pub fn last_access_string(&self, config: &config::Config) -> String {
         self.last_access
             .map(|t| config.to_string(t))
             .unwrap_or("".to_string())
     }
 
-    pub fn last_access(&mut self, c: Config) -> Option<SystemTime> {
+    pub fn last_access(&mut self, c: &Config) -> Option<SystemTime> {
         if let Some(t) = self.last_access {
             if c.is_old(t) {
                 update_last_access(self)
@@ -121,8 +137,6 @@ impl Repository {
         self.last_access
     }
 }
-
-pub(crate) type RepositoryEntires = Vec<RepositoryEntry>;
 
 fn update_last_access(r: &mut Repository) {
     if let Ok(m) = r.path.metadata() {

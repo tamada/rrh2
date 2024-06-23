@@ -1,0 +1,6 @@
+__cdrrh_completions() {
+    local cur=${COMP_WORDS[COMP_CWORD]}
+    repos="$(rrh list --entries id | sort -u)"
+    COMPREPLY=($(compgen -W "$repos" -- "${cur}"))
+}
+complete -F __cdrrh_completions cdrrh

@@ -148,6 +148,22 @@ impl Config {
             None => String::from(""),
         }
     }
+
+    pub fn get_env(&self, key: &str) -> Option<&EnvValue> {
+        self.envs.get(key)
+    }
+
+    pub fn is_env_value_true(&self, key: &str) -> Option<bool> {
+        match self.get_env(key) {
+            Some(EnvValue::Bool(b)) => Some(*b),
+            Some(EnvValue::Var(s)) => {
+                let s = s.to_lowercase();
+                Some(s == "true" || s == "yes")
+            }
+            None => None,
+            _ => Some(false),
+        }
+    }
 }
 
 fn system_time_to_datetime(t: SystemTime) -> DateTime<chrono::Local> {

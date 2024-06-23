@@ -11,9 +11,8 @@ pub fn perform_add(context: &mut Context, c: AddOpts) -> Result<bool> {
         match build_repository_from_path(path, &c.repo) {
             Err(e) => errs.push(e),
             Ok(r) => {
-                match register_repository(&mut context.db, r, c.repo.groups.group_names.clone()) {
-                    Err(e) => errs.push(e),
-                    Ok(_) => {}
+                if let Err(e) = register_repository(&mut context.db, r, c.repo.groups.group_names.clone()) {
+                    errs.push(e);
                 }
             }
         };
@@ -44,7 +43,7 @@ fn build_repository_from_path(path: PathBuf, c: &RepositoryOption) -> Result<Rep
         Ok(id) => id,
         Err(e) => return Err(e),
     };
-    Ok(Repository::new_with(id, path, c.description.clone()))
+    Ok(Repository::new(id, path, c.description.clone()))
 }
 
 fn find_id(path: &PathBuf, repository_id: Option<String>) -> Result<String> {
@@ -73,7 +72,7 @@ impl CloneOpts {
 pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
     let repo = match git2::Repository::clone(&c.repo_url.clone(), c.dest_dir.to_str().unwrap()) {
         Ok(r) => r,
-        Err(e) => return Err(RrhError::GitError(e))
+        Err(e) => return Err(RrhError::Git(e))
     };
     let path = repo.path().to_path_buf();
     match build_repository_from_path(path, &c.repo) {
@@ -90,7 +89,7 @@ pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{commands::GroupSpecifier, config::Config};
+    use crate::commands::GroupSpecifier;
 
     #[test]
     fn test_clone() {
