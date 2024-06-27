@@ -10,7 +10,11 @@ pub enum RrhError {
     RelationNotFound(String, String),
     RepositoryExists(String),
     GroupExists(String),
+    GroupNotEmpty(String),
     RepositoryPathNotFound(PathBuf),
+    RepositoryAndGroupExists(String),
+    RepositoryAndGroupNotFound(String),
+    ToNameExist(String),
     CliOptsInvalid(String, String),
     Arrays(Vec<RrhError>),
     IO(std::io::Error),
@@ -101,16 +105,22 @@ pub(crate) enum RrhCommand {
     Group(GroupOpts),
 
     #[command(
+        name = "init",
+        about = "Generate the shell functions for initializing rrh"
+    )]
+    Init(InitOpts),
+
+    #[command(
         name = "list",
         about = "List the repositories. (alias of \"repository list\")"
     )]
     List(RepositoryListOpts),
 
     #[command(
-        name = "init",
-        about = "Generate the shell functions for initializing rrh"
+        name = "rename",
+        about = "change repository name and change groups. If same name of group and repository exists, this sub command should accept the repository or group flag."
     )]
-    Init(InitOpts),
+    Rename(RenameOpts),
 
     #[command(
         name = "open",
@@ -122,7 +132,7 @@ pub(crate) enum RrhCommand {
         name = "prune",
         about = "Prune the database (remove the non-existing repositories)"
     )]
-    Prune,
+    Prune(PruneOpts),
 
     #[command(
         name = "repository",
@@ -132,8 +142,9 @@ pub(crate) enum RrhCommand {
 
     #[command(name = "recent", about = "List the recent updated repositories")]
     Recent(RecentOpts),
-    // #[command(name = "rm")]
-    // Remove(RemoveOpts),
+
+    #[command(name = "remove", about = "remove the repositories or groups from the database.")]
+    Remove(RemoveOpts),
 }
 
 #[derive(Parser, Debug)]
@@ -147,6 +158,9 @@ pub(crate) struct AddOpts {
         required = true
     )]
     pub(crate) paths: Vec<PathBuf>,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -209,15 +223,17 @@ pub(crate) struct CloneOpts {
         long = "output",
         value_name = "OUTPUT_DIR",
         help = "output directory for clone",
-        default_value = "."
     )]
-    pub(crate) dest_dir: PathBuf,
+    pub(crate) dest_dir: Option<PathBuf>,
 
     #[clap(flatten)]
     pub(crate) repo: RepositoryOption,
 
     #[arg(help = "repository URL", value_name = "REPO_URL")]
     pub(crate) repo_url: String,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -292,8 +308,8 @@ pub(crate) enum GroupSubCommand {
     #[command(name = "add", about = "Add the groups to the rrh database")]
     Add(GroupAddOpts),
 
-    #[command(name = "info", about = "Show the information of the groups")]
-    Info(GroupInfoOpts),
+    #[command(name = "of", about = "Show the group information of the repositories")]
+    Of(GroupOfOpts),
 
     #[command(name = "list", about = "List the groups")]
     List(GroupListOpts),
@@ -319,26 +335,49 @@ pub(crate) struct GroupAddOpts {
         value_name = "GROUPS"
     )]
     pub(crate) names: Vec<String>,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
-pub(crate) struct GroupInfoOpts {
+pub(crate) struct GroupOfOpts {
     #[arg(
-        help = "specify the group names for showing the information",
-        value_name = "GROUPS",
+        index = 1,
+        help = "specify the repository names for showing the groups",
+        value_name = "REPOSITORIES...",
         required = true
     )]
     pub(crate) names: Vec<String>,
+
+    #[clap(flatten)]
+    pub(crate) p_opts: GroupPrintingOpts,
 }
 
 #[derive(Parser, Debug)]
 pub(crate) struct GroupListOpts {
-    #[arg(short, long, help = "specify the entries", use_value_delimiter = true)]
+    #[clap(flatten)]
+    pub(crate) p_opts: GroupPrintingOpts,
+
+    #[arg(index = 1, help = "listing target group names. if not given the value, print the all groups", value_name = "[GROUP_NAME...]")]
+    pub(crate) args: Vec<String>,
+}
+
+#[derive(Parser, Debug, Clone)]
+pub(crate) struct GroupPrintingOpts {
+    #[arg(short, long, help = "specify the entries", value_name = "ENTRIES", rename_all = "kebab-case", use_value_delimiter = true)]
     pub(crate) entries: Vec<GroupEntry>,
+
+    #[arg(short = 'N', long = "no-header", help = "print with no header", default_value_t = false)]
+    pub(crate) no_header: bool,
+
+    #[arg(short, long, help = "specify the result format", value_name = "FORMAT")]
+    pub(crate) format: Option<String>,
 }
 
 #[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Eq)]
 pub(crate) enum GroupEntry {
+    All,
     Name,
     Abbrev,
     Note,
@@ -349,6 +388,12 @@ pub(crate) enum GroupEntry {
 pub(crate) struct GroupRemoveOpts {
     #[arg(short, long, help = "force remove the group")]
     pub(crate) force: bool,
+
+    #[arg(index = 1, help = "The target group names for removal", value_name = "GROUPS")]
+    pub(crate) args: Vec<String>,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -379,6 +424,9 @@ pub(crate) struct GroupUpdateOpts {
 
     #[arg(help = "specify the group name", required = true, value_name = "GROUP")]
     pub(crate) name: String,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -408,6 +456,24 @@ pub(crate) enum ShellName {
     Fish,
     Elvish,
     Powershell,
+}
+
+#[derive(Parser, Debug)]
+pub(crate) struct RenameOpts {
+    #[arg(short, long, help = "the target name is repository, not group name.", conflicts_with = "group")]
+    pub(crate) repository: bool,
+
+    #[arg(short, long, help = "the target name is group, not repository name", conflicts_with = "repository")]
+    pub(crate) group: bool,
+
+    #[arg(index = 1, help = "specify the rename from.", value_name = "FROM")]
+    pub(crate) from: String,
+
+    #[arg(index = 2, help = "specify the rename to", value_name = "TO")]
+    pub(crate) to_name: String,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -451,7 +517,7 @@ pub(crate) enum RepositorySubCommand {
 
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryPrintingOpts {
-    #[arg(long = "no-header", help = "do not show the header", default_value_t = false)]
+    #[arg(short = 'N', long = "no-header", help = "print information with no header", default_value_t = false)]
     pub(crate) no_headers: bool,
 
     #[arg(
@@ -471,7 +537,7 @@ pub(crate) struct RepositoryPrintingOpts {
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryInfoOpts {
     #[clap(flatten)]
-    pub(crate) printOpts: RepositoryPrintingOpts,
+    pub(crate) p_opts: RepositoryPrintingOpts,
 
     #[arg(
         help = "specify the ids for the target repositories",
@@ -484,7 +550,7 @@ pub(crate) struct RepositoryInfoOpts {
 #[derive(Parser, Debug)]
 pub(crate) struct RepositoryListOpts {
     #[clap(flatten)]
-    pub(crate) printOpts: RepositoryPrintingOpts,
+    pub(crate) p_opts: RepositoryPrintingOpts,
 
     #[arg(
         help = "specify the group names for listing the repositories",
@@ -507,6 +573,9 @@ pub(crate) enum RepositoryEntry {
 pub(crate) struct RepositoryRemoveOpts {
     #[arg(index = 1, help = "specify the ids for the target repositories")]
     pub(crate) ids: Vec<String>,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -554,6 +623,9 @@ pub(crate) struct RepositoryUpdateOpts {
         value_name = "REPOSITORY_ID"
     )]
     pub(crate) repository_id: String,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -565,4 +637,28 @@ pub(crate) struct RecentOpts {
         value_name = "NUMBER"
     )]
     pub(crate) number: Option<usize>,
+}
+
+#[derive(Parser, Debug)]
+pub(crate) struct PruneOpts {
+    #[arg(short, long, help = "inquiry mode")]
+    pub(crate) inquiry: bool,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
+}
+
+#[derive(Parser, Debug)]
+pub(crate) struct RemoveOpts {
+    #[arg(short, long, help = "inquiry mode")]
+    pub(crate) inquiry: bool,
+
+    #[arg(short, long, help = "force mode")]
+    pub(crate) force: bool,
+
+    #[arg(long = "dry-run", help = "dry-run mode")]
+    pub(crate) dry_run: bool,
+
+    #[arg(index = 1, help = "specify the target repository or group names", value_name = "TARGETS")]
+    pub(crate) targets: Vec<String>,
 }

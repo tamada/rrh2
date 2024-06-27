@@ -4,19 +4,17 @@ use itertools::Itertools;
 use tabled::Table;
 use tabled::{builder::Builder, settings::Style};
 
-use crate::cli::{RepositoryEntry, RepositoryListOpts, Result, RrhError};
+use crate::cli::{RepositoryEntry, RepositoryListOpts, Result, RrhError, RepositoryPrintingOpts};
 use crate::config::{self, Config, Context, EnvValue};
 use crate::entities::{Repository, RepositoryWithGroups};
 use crate::terminal::to_string_in_columns;
 use crate::utils::format_humanize;
 
-use super::RepositoryPrintingOpts;
-
-pub(crate) fn perform_list(context: &mut Context, c: RepositoryListOpts) -> Result<bool> {
+pub(crate) fn perform_list(context: &Context, mut c: RepositoryListOpts) -> Result<bool> {
     let mut errs = Vec::<RrhError>::new();
     let mut result = HashMap::<String, Vec<Repository>>::new();
     if c.groups.len() == 0 {
-        match context.db.repositories() {
+        match context.db.group_repositories() {
             Ok(rs) => result = rs,
             Err(e) => _ = errs.push(e),
         }
@@ -33,56 +31,27 @@ pub(crate) fn perform_list(context: &mut Context, c: RepositoryListOpts) -> Resu
     if errs.len() != 0 {
         return Err(RrhError::Arrays(errs));
     }
-    print_result(result, context, c.printOpts)
+    let p_opts = &mut c.p_opts;
+    p_opts.update_entries();
+    p_opts.update_format(context.config.get_env("print_list_style"));
+    print_result(result, context, p_opts)
 }
 
-pub(crate) fn print_list(repos: Vec<RepositoryWithGroups>, config: &mut Config, p_opts: RepositoryPrintingOpts) -> Result<bool> {
-    update_result_style(config, p_opts.format);
-    let entries = update_entries(p_opts.entries);
-    print_table_repo_group(repos, entries, config, p_opts.no_headers)
-}
-
-fn update_entries(entries: Vec<RepositoryEntry>) -> Vec<RepositoryEntry> {
-    if entries.contains(&RepositoryEntry::All) {
-        return vec![
-            RepositoryEntry::Id,
-            RepositoryEntry::Groups,
-            RepositoryEntry::Path,
-            RepositoryEntry::Description,
-            RepositoryEntry::LastAccess,
-        ];
-    } else {
-        entries
-    }
-}
-
-fn update_result_style(config: &mut Config, format: Option<String>) {
-    if let Some(f) = format {
-        config
-            .envs
-            .insert(String::from("print_list_style"), EnvValue::Var(f));
-    }
+pub(crate) fn print_list(repos: Vec<RepositoryWithGroups>, config: &mut Config, p_opts: &mut RepositoryPrintingOpts) -> Result<bool> {
+    p_opts.update_format(config.get_env("print_list_style"));
+    print_table_repo_group(repos, p_opts, config)
 }
 
 fn print_result(
     result: HashMap<String, Vec<Repository>>,
-    context: &mut config::Context,
-    opts: RepositoryPrintingOpts,
+    context: &config::Context,
+    opts: &RepositoryPrintingOpts,
 ) -> Result<bool> {
-    let entries = update_entries(opts.entries);
-    let config = &mut context.config;
-    update_result_style(config, opts.format);
-    if entries.len() == 0 && result.len() == 1 {
+    if opts.entries.len() == 1 && result.len() == 1 {
         print_items_in_columns(
-            &RepositoryEntry::Id,
+            opts.entries.get(0).unwrap(),
             result.values().next().unwrap().clone(),
-            config,
-        )
-    } else if entries.len() == 1 && result.len() == 1 {
-        print_items_in_columns(
-            entries.get(0).unwrap(),
-            result.values().next().unwrap().clone(),
-            config,
+            &context.config,
         )
     } else {
         for (group_name, repos) in result.iter() {
@@ -91,9 +60,9 @@ fn print_result(
                 None => break,
             };
             if group.is_abbrev() && result.len() > 1 {
-                print_abbrev(&entries, repos, group_name, config, opts.no_headers);
+                print_abbrev(opts, repos, group_name, &context.config)
             } else {
-                print_table(&entries, repos, group_name, &config, opts.no_headers)
+                print_table(opts, repos, group_name, &context.config)
             }
         }
         Ok(true)
@@ -128,45 +97,43 @@ fn build_table_builder(entries: &Vec<RepositoryEntry>, no_header: bool) -> Build
     builder
 }
 
-pub(crate) fn print_table_repo_group(repos: Vec<RepositoryWithGroups>, entries: Vec<RepositoryEntry>, config: &Config, no_header: bool) -> Result<bool> {
-    let mut builder = build_table_builder(&entries, no_header);
+pub(crate) fn print_table_repo_group(repos: Vec<RepositoryWithGroups>, opts: &RepositoryPrintingOpts, config: &Config) -> Result<bool> {
+    let mut builder = build_table_builder(&opts.entries, opts.no_headers);
     repos.iter()
-        .map(|r| map_to_vec_repo_group(&entries, r, config))
+        .map(|r| map_to_vec_repo_group(&opts.entries, r, config))
         .for_each(|v| builder.push_record(v));
-    let table = apply_style(builder, config.value(String::from("print_list_style")));
+    let table = apply_style(builder, &opts.format);
     println!("{}", table.to_string());
     Ok(false)
 }
 
-fn print_abbrev(_entries: &Vec<RepositoryEntry>, result: &Vec<Repository>, group_name: &str, config: &config::Config, no_header: bool) {
+fn print_abbrev(opts: &RepositoryPrintingOpts, result: &Vec<Repository>, group_name: &str, _config: &config::Config) {
     let mut builder = Builder::new();
     let record = vec![String::from("Group"), group_name.to_string(), format!("{}", format_humanize(result.len(), "repository", "repositories"))];
     builder.push_record(record);
-    let table = apply_style(builder, config.value(String::from("print_list_style")));
+    let table = apply_style(builder, &opts.format);
     println!("{}", table.to_string());
 }
 
 fn print_table(
-    entries: &Vec<RepositoryEntry>,
+    opts: &RepositoryPrintingOpts,
     result: &Vec<Repository>,
     g: &str,
-    config: &config::Config,
-    no_header: bool,
+    config: &config::Config
 ) {
-    let mut builder = build_table_builder(entries, no_header);
+    let mut builder = build_table_builder(&opts.entries, opts.no_headers);
     result
         .iter()
-        .map(|r| map_to_vec(entries, r, g, config))
+        .map(|r| map_to_vec(&opts.entries, r, g, config))
         .for_each(|v| builder.push_record(v));
-    let table = apply_style(builder, config.value(String::from("print_list_style")));
+    let table = apply_style(builder, &opts.format);
     println!("{}", table.to_string());
 }
 
-fn apply_style(builder: Builder, s: Option<EnvValue>) -> Table {
+fn apply_style(builder: Builder, s: &Option<String>) -> Table {
     let mut table = builder.build();
     match s {
-        Some(EnvValue::Bool(_)) | Some(EnvValue::Value(_)) => table.with(Style::blank()),
-        Some(EnvValue::Var(v)) => {
+        Some(v) => {
             let v = v.to_lowercase();
             if v == "psql" {
                 table.with(Style::psql())
@@ -271,4 +238,47 @@ fn print_items_in_columns(
         }
     }
     Ok(true)
+}
+
+impl RepositoryPrintingOpts {
+    fn update_entries(&mut self) {
+        if self.entries.contains(&RepositoryEntry::All) {
+            self.entries = vec![
+                RepositoryEntry::Id,
+                RepositoryEntry::Groups,
+                RepositoryEntry::Path,
+                RepositoryEntry::Description,
+                RepositoryEntry::LastAccess,
+            ]
+        } else if self.entries.len() == 0 {
+            self.entries = vec![RepositoryEntry::Id]
+        }
+    }
+
+    fn update_format(&mut self, format: Option<&EnvValue>) {
+        let availables = vec![
+                "psql", "ascii", "ascii_rounded", "empty", "blank", "markdown", "sharp", "rounded", 
+                "modern_rounded", "re_structured_text", "dots", "modern", "extended", "csv",
+        ].iter().map(|s| s.to_string()).collect::<Vec<String>>();
+        self.format = if let Some(f) = &self.format {
+            let f = f.to_lowercase();
+            if availables.contains(&f) {
+                Some(f)
+            } else {
+                Some(String::from("blank"))
+            }
+        } else {
+            match format {
+                Some(EnvValue::Var(f)) => {
+                    let f = f.to_lowercase();
+                    if availables.contains(&f) {
+                        Some(f)
+                    } else {
+                        Some(String::from("blank"))
+                    }
+                },
+                _ => Some(String::from("blank")),
+            }
+        };
+    }
 }

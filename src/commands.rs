@@ -3,9 +3,11 @@ use crate::config::Context;
 
 mod add;
 mod alias;
+mod group;
 mod init;
 mod list;
 mod exec;
+mod prune;
 mod repository;
 
 pub fn perform_add(context: &mut Context, c: AddOpts) -> Result<bool> {
@@ -33,23 +35,23 @@ pub fn perform_export(context: &mut Context, c: ExportOpts) -> Result<bool> {
 }
 
 pub fn perform_group(context: &mut Context, c: GroupOpts) -> Result<bool> {
-    todo!();
-}
-
-pub fn perform_list(context: &mut Context, c: RepositoryListOpts) -> Result<bool> {
-    list::perform_list(context, c)
+    group::perform(context, c)
 }
 
 pub fn perform_init(context: &mut Context, c: InitOpts) -> Result<bool> {
     init::perform(context, c)
 }
 
+pub fn perform_list(context: &Context, c: RepositoryListOpts) -> Result<bool> {
+    list::perform_list(context, c)
+}
+
 pub fn perform_open(context: &mut Context, c: OpenOpts) -> Result<bool> {
     exec::perform_open(context, c)
 }
 
-pub fn perform_prune(context: &mut Context) -> Result<bool> {
-    todo!();
+pub fn perform_prune(context: &mut Context, c: PruneOpts) -> Result<bool> {
+    prune::perform_prune(context, c)
 }
 
 pub fn perform_repository(context: &mut Context, c: RepositoryOpts) -> Result<bool> {
@@ -58,4 +60,12 @@ pub fn perform_repository(context: &mut Context, c: RepositoryOpts) -> Result<bo
 
 pub fn perform_recent(context: &Context, c: RecentOpts) -> Result<bool> {
     todo!();
+}
+
+pub fn perform_rename(context: &mut Context, c: RenameOpts) -> Result<bool> {
+    prune::perform_rename(context, c)
+}
+
+pub fn perform_remove(context: &mut Context, c: RemoveOpts) -> Result<bool> {
+    prune::perform_remove(context, c)
 }

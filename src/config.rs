@@ -189,7 +189,7 @@ fn format_time(t: SystemTime, v: Option<EnvValue>) -> Option<String> {
             let s = orig.to_lowercase();
             if s == "humanize" || s == "relative"  {
                 Some(format!("{}", HumanTime::from(dt)))
-            } else if s.starts_with("strftime(") && s.ends_with((")")) {
+            } else if s.starts_with("strftime(") && s.ends_with(")") {
                 println!("strftime({})", &orig[9..orig.len() - 1]);
                 Some(format!("{}", dt.format(&orig[9..orig.len() - 1])))
             } else if s == "iso" || s == "iso8601" {

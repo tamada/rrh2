@@ -36,12 +36,14 @@ pub(crate) fn perform(opts: CliOpts) -> Result<()> {
         Some(RrhCommand::Exec(c)) => perform_exec(&mut context, c),
         Some(RrhCommand::Export(c)) => perform_export(&mut context, c),
         Some(RrhCommand::Group(c)) => perform_group(&mut context, c),
-        Some(RrhCommand::List(c)) => perform_list(&mut context, c),
         Some(RrhCommand::Init(c)) => perform_init(&mut context, c),
+        Some(RrhCommand::List(c)) => perform_list(&mut context, c),
         Some(RrhCommand::Open(c)) => perform_open(&mut context, c),
-        Some(RrhCommand::Prune) => perform_prune(&mut context),
+        Some(RrhCommand::Prune(c)) => perform_prune(&mut context, c),
         Some(RrhCommand::Repository(c)) => perform_repository(&mut context, c),
         Some(RrhCommand::Recent(c)) => perform_recent(&context, c),
+        Some(RrhCommand::Rename(c)) => perform_rename(&mut context, c),
+        Some(RrhCommand::Remove(c)) => perform_remove(&mut context, c),
         None => find_alias_or_external_command(&mut context, opts.args),
     };
     match store_flag {
@@ -87,6 +89,7 @@ fn print_errors(e: RrhError) {
         CliOptsInvalid(command, message) => eprintln!("{}: {}", command, message),
         RepositoryExists(name) => eprintln!("{}: repository already exists", name),
         GroupExists(name) => eprintln!("{}: group already exists", name),
+        GroupNotEmpty(name) => eprintln!("{}: does not remove group since not empty", name),
         Fatal(message) => eprintln!("internal error: {}", message),
         ExternalCommand(status, command) => eprintln!("{} exit status: {}", command, status),
         Unknown => eprintln!("unknown error"),
@@ -96,5 +99,8 @@ fn print_errors(e: RrhError) {
             }
         }
         RepositoryPathNotFound(path) => eprintln!("{}: repository path not found", path.display()),
+        RepositoryAndGroupExists(name) => eprintln!("{}: repository and group both exists", name),
+        RepositoryAndGroupNotFound(name) => eprintln!("{}: no repository or group found", name),
+        ToNameExist(name) => eprintln!("{}: the to name is occupied", name)
     }
 }

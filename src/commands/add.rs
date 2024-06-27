@@ -18,15 +18,15 @@ pub fn perform_add(context: &mut Context, c: AddOpts) -> Result<bool> {
         };
     }
     if errs.is_empty() {
-        Ok(true)
+        Ok(!c.dry_run)
     } else {
         Err(RrhError::Arrays(errs))
     }
 }
 
-fn register_repository(db: &mut Box<dyn Database>, r: Repository, groups: Vec<String>) -> Result<bool> {
+fn register_repository(db: &mut Box<dyn Database>, r: Repository, groups: Vec<String>) -> Result<()> {
     match db.register(r, groups) {
-        Ok(()) => Ok(true),
+        Ok(()) => Ok(()),
         Err(e) => Err(e), 
     }
 }
@@ -65,12 +65,16 @@ impl CloneOpts {
         } else {
             repo_name.to_string()
         };
-        self.dest_dir.join(repo_path)
+        if let Some(dest_dir) = &self.dest_dir {
+            dest_dir.clone()
+        } else {
+            PathBuf::from(".").join(repo_path)
+        }
     }
 }
 
 pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
-    let repo = match git2::Repository::clone(&c.repo_url.clone(), c.dest_dir.to_str().unwrap()) {
+    let repo = match git2::Repository::clone(&c.repo_url.clone(), c.repo_path()) {
         Ok(r) => r,
         Err(e) => return Err(RrhError::Git(e))
     };
@@ -80,7 +84,7 @@ pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
         Ok(r) => {
             match register_repository(&mut context.db, r, c.repo.groups.group_names.clone()) {
                 Err(e) => Err(e),
-                Ok(r) => Ok(r),
+                Ok(_) => Ok(!c.dry_run),
             }
         }
     }
@@ -94,11 +98,37 @@ mod tests {
     #[test]
     fn test_clone() {
         let mut context = Context::new_with_path("testdata/config.json".into()).unwrap();
-        let cloneOpts = CloneOpts {
+        let clone_opts = CloneOpts {
             repo_url: "https://github.com/tamada/helloworld".into(),
-            dest_dir: PathBuf::from("testdir"),
+            dest_dir: Some(PathBuf::from("clonedir")),
+            dry_run: false,
             repo: RepositoryOption {  repository_id: None, groups: GroupSpecifier{ group_names: vec![] }, description: None },
         };
-        let result = perform_clone(&mut context, cloneOpts);
+        let result = perform_clone(&mut context, clone_opts);
+        if let Err(e) = &result {
+            println!("error: {:?}", e);
+        }
+        assert!(result.is_ok());
+        assert!(PathBuf::from("clonedir").exists());
+        assert!(PathBuf::from("clonedir/Dockerfile").exists());
+
+        let _ = std::fs::remove_dir_all("clonedir");
+    }
+
+    #[test]
+    fn test_clone_none_dest_dir() {
+        let mut context = Context::new_with_path("testdata/config.json".into()).unwrap();
+        let clone_opts = CloneOpts {
+            repo_url: "https://github.com/tamada/helloworld.git".into(),
+            dest_dir: None,
+            dry_run: false,
+            repo: RepositoryOption {  repository_id: None, groups: GroupSpecifier{ group_names: vec![] }, description: None },
+        };
+        let result = perform_clone(&mut context, clone_opts);
+        assert!(result.is_ok());
+        assert!(PathBuf::from("helloworld").exists());
+        assert!(PathBuf::from("helloworld/Dockerfile").exists());
+
+        let _ = std::fs::remove_dir_all("helloworld");
     }
 }

@@ -79,20 +79,6 @@ pub struct RepositoryWithGroups {
     pub groups: Vec<Group>,
 }
 
-impl RepositoryWithGroups {
-    pub fn last_access_string(&self, config: &config::Config) -> String {
-        self.repo.last_access_string(config)
-    }
-
-    pub fn last_access(&mut self, c: &Config) -> Option<SystemTime> {
-        self.repo.last_access(c)
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<'_, Group> {
-        self.groups.iter()
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Repository {
     pub id: String,

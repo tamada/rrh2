@@ -24,16 +24,16 @@ fn perform_info(c: &mut Context, opts: RepositoryInfoOpts) -> Result<bool> {
             .map(|r| r.unwrap())
             .collect::<Vec<_>>();
     if repos.len() > 0 {
-        let mut p_opts = opts.printOpts;
+        let mut p_opts = opts.p_opts;
         if p_opts.entries.len() == 0 {
             p_opts.entries = vec![RepositoryEntry::All];
         }
-        return list::print_list(repos, &mut c.config, p_opts)
+        return list::print_list(repos, &mut c.config, &mut p_opts)
     }
     Ok(false)
 }
 
-fn perform_remove(c: &mut Context, opts: RepositoryRemoveOpts) -> Result<bool> {
+pub(crate) fn perform_remove(c: &mut Context, opts: RepositoryRemoveOpts) -> Result<bool> {
     if opts.ids.len() > 0 {
         let mut errs = vec![];
         for id in opts.ids {
@@ -44,14 +44,14 @@ fn perform_remove(c: &mut Context, opts: RepositoryRemoveOpts) -> Result<bool> {
         if errs.len() > 0 {
             return Err(RrhError::Arrays(errs))
         } else {
-            Ok(true)
+            Ok(!opts.dry_run)
         }
     } else {
         Ok(false)
     }
 }
 
-fn perform_update(c: &mut Context, opts: RepositoryUpdateOpts) -> Result<bool> {
+pub(crate) fn perform_update(c: &mut Context, opts: RepositoryUpdateOpts) -> Result<bool> {
     match c.db.find_repository_with_groups(&opts.repository_id) {
         Some(r) => {
             let (new_repo, g) = build_new_repo(c, r.clone(), &opts);
@@ -60,7 +60,10 @@ fn perform_update(c: &mut Context, opts: RepositoryUpdateOpts) -> Result<bool> {
                     return Err(e)
                 }
             }
-            repository_update_impl(c, opts.repository_id, new_repo, g)
+            match repository_update_impl(c, opts.repository_id, new_repo, g) {
+                Err(e) => Err(e),
+                Ok(f) => Ok(!opts.dry_run || f),
+            }
         },
         None => Err(RrhError::RepositoryNotFound(opts.repository_id.clone()))
     }
@@ -120,17 +123,15 @@ fn relate_with(c: &mut Context, group_name: &str, repo_id: &str) -> Result<()> {
 fn build_new_repo(c: &Context, r: RepositoryWithGroups, opts: &RepositoryUpdateOpts) -> (Repository, Vec<String>) {
     let mut new_repo = opts.build_new_repo(&r.repo);
     let _ = new_repo.last_access(&c.config);
-    let new_groups = find_groups(r.groups, opts);
+    let new_groups = find_new_groups(r.groups, opts);
     (new_repo, new_groups)
 }
 
-fn find_groups(groups: Vec<Group>, opts: &RepositoryUpdateOpts) -> Vec<String> {
+fn find_new_groups(groups: Vec<Group>, opts: &RepositoryUpdateOpts) -> Vec<String> {
     if opts.renew_groups() {
         opts.new_groups.clone()
     } else {
-        let mut result = groups.iter().map(|g| g.name.clone()).collect::<Vec<String>>();
-        result.extend(opts.groups.clone());
-        result
+        opts.groups.clone()
     }
 }
 

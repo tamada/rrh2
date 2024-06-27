@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::cli::{Result, RrhError};
@@ -103,11 +104,25 @@ impl RefDB for JsonDB {
             .cloned()
     }
 
+    fn find_relation_with_group(&self, group_name: &str) -> Vec<Relation> {
+        self.relations.iter()
+            .filter(|r| r.group == group_name)
+            .map(|r| r.clone())
+            .collect::<Vec<Relation>>()
+    }
+
+    fn find_relation_with_repository(&self, repo_id: &str) -> Vec<Relation> {
+        self.relations.iter()
+            .filter(|r| r.id == repo_id)
+            .map(|r| r.clone())
+            .collect::<Vec<Relation>>()
+    }
+
     fn groups(&self) -> Result<Vec<Group>> {
         Ok(self.groups.clone())
     }
 
-    fn repositories(&self) -> Result<HashMap<String, Vec<Repository>>> {
+    fn group_repositories(&self) -> Result<HashMap<String, Vec<Repository>>> {
         let mut result = HashMap::<String, Vec<Repository>>::new();
         let mut errs = Vec::<RrhError>::new();
         for group in self.groups.iter() {
@@ -121,6 +136,10 @@ impl RefDB for JsonDB {
         } else {
             Ok(result)
         }
+    }
+
+    fn repositories(&self) -> Result<Vec<Repository>> {
+        Ok(self.repositories.clone())
     }
 }
 
@@ -156,24 +175,33 @@ impl Database for JsonDB {
         Ok(())
     }
 
-    fn prune(&mut self) -> Result<()> {
-        todo!()
-    }
-
     fn update_group(&mut self, name: String, group: Group) -> Result<()> {
-        self.groups
+        let old_name = name.clone();
+        let new_name = group.name.clone();
+        let r = self.groups
             .iter_mut()
             .find(|g| g.name == name)
-            .map(|g| *g = group)
-            .ok_or(RrhError::GroupNotFound(name))
+            .map(|g| *g = group);
+
+        if let Some(_) = r {
+            update_relations_all_for_group(self, &old_name, &new_name)
+        } else {
+            Err(RrhError::GroupNotFound(name))
+        }
     }
 
     fn update_repository(&mut self, id: String, r: Repository) -> Result<()> {
-        self.repositories
+        let new_name = r.id.clone();
+        let old_name = id.clone();
+        let r = self.repositories
             .iter_mut()
             .find(|repo| repo.id == id)
-            .map(|repo| *repo = r)
-            .ok_or(RrhError::RepositoryNotFound(id))
+            .map(|repo| *repo = r);
+        if r == None {
+            Err(RrhError::RepositoryNotFound(id))
+        } else {
+            update_relations_all_for_repository(self, &old_name, &new_name)
+        }
     }
 
     fn relate(&mut self, id: String, group_name: String) -> Result<Relation> {
@@ -233,14 +261,29 @@ impl Database for JsonDB {
     }
 }
 
+fn update_relations_all_for_repository(db: &mut JsonDB, old_name: &str, new_name: &str) -> Result<()> {
+    db.relations.iter_mut()
+        .filter(|r| r.group == old_name)
+        .for_each(|r| r.group = new_name.to_string());
+    Ok(())
+}
+
+fn update_relations_all_for_group(db: &mut JsonDB, old_name: &str, new_name: &str) -> Result<()> {
+    db.relations.iter_mut()
+        .filter(|r| r.group == old_name)
+        .for_each(|r| r.group = new_name.to_string());
+    Ok(())
+}
+
 fn delete_relation_all_for_repository(db: &mut JsonDB, id: String) -> Result<()> {
-    let indexes = relation_indexes(db, |i, r| {
+    let mut indexes = relation_indexes(db, |i, r| {
         if r.id == id {
             Some(i)
         } else {
             None
         }
     });
+    indexes.reverse();
     for i in indexes {
         db.relations.remove(i);
     }
@@ -248,13 +291,14 @@ fn delete_relation_all_for_repository(db: &mut JsonDB, id: String) -> Result<()>
 }
 
 fn delete_relation_all_for_group(db: &mut JsonDB, group_name: String) -> Result<()> {
-    let indexes = relation_indexes(db, |i, r| {
+    let mut indexes = relation_indexes(db, |i, r| {
         if r.group == group_name {
             Some(i)
         } else {
             None
         }
     });
+    indexes.reverse();
     for i in indexes {
         db.relations.remove(i);
     }
@@ -266,6 +310,17 @@ fn relation_indexes<F>(db: &JsonDB, f: F) -> Vec<usize>
     db.relations.iter().enumerate()
             .filter_map(|(i, r)| f(i, r))
             .collect::<Vec<usize>>()
+}
+
+pub(crate) fn find_orphan_repositories(db: &JsonDB) -> Vec<Repository> {
+    let result = db.relations.iter()
+        .map(|r| r.id.clone())
+        .dedup()
+        .collect::<Vec<String>>();
+    db.repositories.iter()
+        .filter(|r| !result.contains(&(*r).id))
+        .map(|r| r.clone())
+        .collect::<Vec<Repository>>()
 }
 
 #[cfg(test)]
