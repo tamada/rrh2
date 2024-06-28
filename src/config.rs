@@ -251,8 +251,8 @@ mod tests {
             Ok(c) => {
                 assert_eq!(c.database_path, PathBuf::from("testdata/database.json"));
                 assert_eq!(c.from, Some(PathBuf::from("testdata/config.json")));
-                assert_eq!(c.envs.len(), 6);
-                assert_eq!(c.aliases.len(), 3);
+                assert_eq!(c.envs.len(), 8);
+                assert_eq!(c.aliases.len(), 2);
             }
             Err(e) => panic!("Error: {:?}", e),
         }

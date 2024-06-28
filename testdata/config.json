@@ -1,1 +1,26 @@
-{"home":"/Users/tamada/.config/rrh2","config_path":"testdata/config.json","database_path":"testdata/database.json","envs":{"auto_delete_group":true,"clone_directory":".","default_group":"no-group","print_list_style":"blank","time_format":"relative","auto_create_group":true,"last_access_reload_duration_secs":86400,"sort_on_update":true},"aliases":{"grlist":["group","list"],"hello":["exec","echo","Hello, world!"]}}
+{
+  "database_path": "testdata/database.json",
+  "user_home": "/Users/tamada",
+  "home": "/Users/tamada/.config/rrh2",
+  "envs": {
+    "auto_create_group": true,
+    "auto_delete_group": true,
+    "last_access_reload_duration_secs": 86400,
+    "clone_directory": ".",
+    "default_group": "no-group",
+    "sort_on_update": true,
+    "print_list_style": "blank",
+    "last_access_format": "humanize"
+  },
+  "aliases": {
+    "hello": [
+      "exec",
+      "echo",
+      "Hello, world!"
+    ],
+    "grlist": [
+      "group",
+      "list"
+    ]
+  }
+}

@@ -637,6 +637,9 @@ pub(crate) struct RecentOpts {
         value_name = "NUMBER"
     )]
     pub(crate) number: Option<usize>,
+
+    #[clap(flatten)]
+    pub(crate) p_opts: RepositoryPrintingOpts,
 }
 
 #[derive(Parser, Debug)]

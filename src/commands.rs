@@ -59,7 +59,7 @@ pub fn perform_repository(context: &mut Context, c: RepositoryOpts) -> Result<bo
 }
 
 pub fn perform_recent(context: &Context, c: RecentOpts) -> Result<bool> {
-    todo!();
+    list::perform_recent(context, c)
 }
 
 pub fn perform_rename(context: &mut Context, c: RenameOpts) -> Result<bool> {

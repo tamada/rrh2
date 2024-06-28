@@ -23,7 +23,7 @@ fn parse_cargo_toml() -> toml::Value {
     file.parse().unwrap()
 }
 
-fn main() {
+fn generate_completions() {
     let table = parse_cargo_toml();
     let appname = table["package"]["name"].as_str().unwrap();
 
@@ -37,4 +37,25 @@ fn main() {
     generate(Shell::Fish, &mut app, appname, &outdir, format!("fish/{}", appname));
     generate(Shell::PowerShell, &mut app, appname, &outdir, format!("powershell/{}", appname));
     generate(Shell::Zsh, &mut app, appname, &outdir, format!("zsh/_{}", appname));
+}
+
+fn convert_pkl_to_json() {
+    let output = std::process::Command::new("pkl")
+            .args(["eval", "-o", "testdata/config.json", "-f", "json", "testdata/config.pkl"])
+            .output();
+    match output {
+        Ok(o) => {
+            if !o.status.success() {
+                panic!("Failed to convert pkl to json: {:?}", o);
+            } else {
+                println!("Converted pkl to json");
+            }
+        }
+        Err(e) => panic!("{}", e),
+    }
+}
+
+fn main() {
+    generate_completions();
+    convert_pkl_to_json();
 }

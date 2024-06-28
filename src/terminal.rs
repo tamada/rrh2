@@ -38,7 +38,7 @@ pub fn to_string_in_column_with(values: Vec<String>, cols: usize, spacer: usize)
     let padding_values = padding(values, max);
     let mut lines = Vec::new();
     let mut line = Vec::<u8>::new();
-    let space = (0..spacer).into_iter().map(|i| " ").collect::<String>();
+    let space = (0..spacer).into_iter().map(|_| " ").collect::<String>();
     for (i, item) in padding_values.iter().enumerate() {
         line.extend(item.as_bytes());
         if i % column_count == (column_count - 1) || i == padding_values.len() - 1 {

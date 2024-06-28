@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -27,7 +28,10 @@ impl JsonDB {
 
     fn from_str(data: &str) -> Result<Self> {
         match serde_json::from_str(data) {
-            Ok(db) => Ok(db),
+            Ok(mut db) => {
+                update_recent(&mut db);
+                Ok(db)
+            }
             Err(e) => Err(RrhError::Json(e)),
         }
     }
@@ -310,6 +314,19 @@ fn relation_indexes<F>(db: &JsonDB, f: F) -> Vec<usize>
     db.relations.iter().enumerate()
             .filter_map(|(i, r)| f(i, r))
             .collect::<Vec<usize>>()
+}
+
+fn update_recent(db: &mut JsonDB) {
+    db.repositories.iter_mut()
+        .for_each(|r| r.last_access = find_last_access(&r.path));
+}
+
+fn find_last_access(p: &PathBuf) -> Option<SystemTime> {
+    if let Ok(m) = p.metadata() {
+        m.accessed().ok()
+    } else {
+        None
+    }
 }
 
 pub(crate) fn find_orphan_repositories(db: &JsonDB) -> Vec<Repository> {

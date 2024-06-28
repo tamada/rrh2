@@ -10,6 +10,30 @@ use crate::entities::{Repository, RepositoryWithGroups};
 use crate::terminal::to_string_in_columns;
 use crate::utils::format_humanize;
 
+use super::RecentOpts;
+
+pub(crate) fn perform_recent(context: &Context, mut c: RecentOpts) -> Result<bool> {
+    let result = context.db.repositories().unwrap().iter()
+        .sorted_by(|&a, &b| a.last_access.cmp(&b.last_access))
+        .take(c.number.unwrap_or(5))
+        .map(|r| build_repo_with_group(r, context))
+        .collect::<Vec<_>>();
+    let p_opts = &mut c.p_opts;
+    p_opts.update_entries();
+    p_opts.update_format(context.config.get_env("print_list_style"));
+    print_table_repo_group(result, &p_opts, &context.config)
+}
+
+fn build_repo_with_group(r: &Repository, context: &Context) -> RepositoryWithGroups {
+    let groups = context.db.find_relation_with_repository(&r.id).iter()
+        .map(|r| context.db.find_group(&r.group).unwrap())
+        .collect::<Vec<_>>();
+    RepositoryWithGroups {
+        repo: r.clone(),
+        groups,
+    }
+}
+
 pub(crate) fn perform_list(context: &Context, mut c: RepositoryListOpts) -> Result<bool> {
     let mut errs = Vec::<RrhError>::new();
     let mut result = HashMap::<String, Vec<Repository>>::new();
@@ -34,7 +58,7 @@ pub(crate) fn perform_list(context: &Context, mut c: RepositoryListOpts) -> Resu
     let p_opts = &mut c.p_opts;
     p_opts.update_entries();
     p_opts.update_format(context.config.get_env("print_list_style"));
-    print_result(result, context, p_opts)
+    print_result(result, p_opts, context)
 }
 
 pub(crate) fn print_list(repos: Vec<RepositoryWithGroups>, config: &mut Config, p_opts: &mut RepositoryPrintingOpts) -> Result<bool> {
@@ -44,8 +68,8 @@ pub(crate) fn print_list(repos: Vec<RepositoryWithGroups>, config: &mut Config, 
 
 fn print_result(
     result: HashMap<String, Vec<Repository>>,
-    context: &config::Context,
     opts: &RepositoryPrintingOpts,
+    context: &config::Context,
 ) -> Result<bool> {
     if opts.entries.len() == 1 && result.len() == 1 {
         print_items_in_columns(
@@ -60,9 +84,9 @@ fn print_result(
                 None => break,
             };
             if group.is_abbrev() && result.len() > 1 {
-                print_abbrev(opts, repos, group_name, &context.config)
+                print_abbrev(repos, opts, group_name, &context.config)
             } else {
-                print_table(opts, repos, group_name, &context.config)
+                print_table(repos, opts, group_name, &context.config)
             }
         }
         Ok(true)
@@ -107,7 +131,7 @@ pub(crate) fn print_table_repo_group(repos: Vec<RepositoryWithGroups>, opts: &Re
     Ok(false)
 }
 
-fn print_abbrev(opts: &RepositoryPrintingOpts, result: &Vec<Repository>, group_name: &str, _config: &config::Config) {
+fn print_abbrev(result: &Vec<Repository>, opts: &RepositoryPrintingOpts, group_name: &str, _config: &config::Config) {
     let mut builder = Builder::new();
     let record = vec![String::from("Group"), group_name.to_string(), format!("{}", format_humanize(result.len(), "repository", "repositories"))];
     builder.push_record(record);
@@ -116,8 +140,8 @@ fn print_abbrev(opts: &RepositoryPrintingOpts, result: &Vec<Repository>, group_n
 }
 
 fn print_table(
-    opts: &RepositoryPrintingOpts,
     result: &Vec<Repository>,
+    opts: &RepositoryPrintingOpts,
     g: &str,
     config: &config::Config
 ) {
