@@ -1,5 +1,6 @@
 use clap::{Parser, ValueEnum};
-use std::{fmt::Display, path::PathBuf, process::ExitStatus};
+use std::path::PathBuf;
+use std::process::ExitStatus;
 
 pub type Result<T> = std::result::Result<T, RrhError>;
 
@@ -23,13 +24,6 @@ pub enum RrhError {
     RepositoryNotFound(String),
     RepositoryPathNotFound(PathBuf),
     ToNameExist(String),
-    Unknown,
-}
-
-impl Display for RrhError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
 }
 
 #[derive(Parser, Debug)]

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Offset, TimeZone, Utc};
+use chrono::{DateTime, TimeZone};
 use chrono_humanize::HumanTime;
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,6 @@ impl Context {
 }
 
 fn load_db(config: &Config) -> Result<Box<dyn Database>> {
-    println!("load_db({})", config.database_path.display());
     match JsonDB::load(config.database_path.clone()) {
         Ok(db) => Ok(Box::new(db)),
         Err(e) => {
@@ -92,12 +91,6 @@ pub(crate) enum EnvValue {
     Bool(bool),
     Var(String),
     Value(i32),
-}
-
-impl EnvValue {
-    pub(crate) fn of(s: &str) -> Self {
-        Self::Var(s.to_string())
-    }
 }
 
 impl Config {

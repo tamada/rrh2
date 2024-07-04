@@ -92,7 +92,6 @@ fn print_errors(e: RrhError) {
         GroupNotEmpty(name) => eprintln!("{}: does not remove group since not empty", name),
         Fatal(message) => eprintln!("internal error: {}", message),
         ExternalCommand(status, command) => eprintln!("{} exit status: {}", command, status),
-        Unknown => eprintln!("unknown error"),
         Arrays(v) => {
             for item in v {
                 print_errors(item)

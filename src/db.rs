@@ -43,7 +43,3 @@ pub trait Database: RefDB {
     fn delete_group(&mut self, group_name: String) -> Result<()>;
     fn store(&mut self, out: Box<dyn std::io::Write>) -> Result<()>;
 }
-
-pub trait Exportable {
-    fn export(&self, out: Box<dyn std::io::Write>) -> Result<()>;
-}

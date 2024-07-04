@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 use itertools::Itertools;
@@ -135,6 +135,11 @@ impl RefDB for JsonDB {
                 Err(e) => _ = errs.push(e),
             };
         }
+        let orphans = find_orphan_repositories(self);
+        if orphans.len() > 0 {
+            result.insert(String::from("<orphan>"), orphans);
+        }
+
         if errs.len() > 0 {
             Err(RrhError::Arrays(errs))
         } else {

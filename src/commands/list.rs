@@ -341,7 +341,3 @@ impl RepositoryPrintingOpts {
         };
     }
 }
-
-#[cfg(test)]
-mod tests {
-}

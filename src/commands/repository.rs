@@ -127,7 +127,7 @@ fn build_new_repo(c: &Context, r: RepositoryWithGroups, opts: &RepositoryUpdateO
     (new_repo, new_groups)
 }
 
-fn find_new_groups(groups: Vec<Group>, opts: &RepositoryUpdateOpts) -> Vec<String> {
+fn find_new_groups(_groups: Vec<Group>, opts: &RepositoryUpdateOpts) -> Vec<String> {
     if opts.renew_groups() {
         opts.new_groups.clone()
     } else {

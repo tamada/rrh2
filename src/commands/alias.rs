@@ -7,7 +7,6 @@ pub(crate) enum Mode {
     Register,
     Upadte,
     Remove,
-    Execute,
 }
 
 impl AliasOpts {
@@ -36,7 +35,7 @@ impl AliasOpts {
             Mode::Register => validate_register(self, &context.config, &mut errs),
             Mode::Upadte => validate_update(self, &context.config, &mut errs),
             Mode::Remove => validate_remove(self, &context.config, &mut errs),
-            Mode::Execute | Mode::List => {}
+            Mode::List => {}
         }
         if errs.len() == 0 {
             Ok(mode)
@@ -155,7 +154,6 @@ pub fn perform(context: &mut Context, c: AliasOpts) -> Result<bool> {
             Mode::Register => perform_register(&mut context.config, c),
             Mode::Upadte => perform_update(&mut context.config, c),
             Mode::Remove => perform_remove(&mut context.config, c),
-            Mode::Execute => unreachable!("Mode::Execute is never reach here!"),
         },
     }
 }
