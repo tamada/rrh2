@@ -145,6 +145,10 @@ impl RefDB for JsonDB {
     fn repositories(&self) -> Result<Vec<Repository>> {
         Ok(self.repositories.clone())
     }
+
+    fn relations(&self) -> Result<Vec<Relation>> {
+        Ok(self.relations.clone())
+    }
 }
 
 impl Database for JsonDB {

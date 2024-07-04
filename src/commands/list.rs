@@ -10,7 +10,7 @@ use crate::entities::{Repository, RepositoryWithGroups};
 use crate::terminal::to_string_in_columns;
 use crate::utils::format_humanize;
 
-use super::RecentOpts;
+use super::{FindOpts, RecentOpts};
 
 pub(crate) fn perform_recent(context: &Context, mut c: RecentOpts) -> Result<bool> {
     let result = context.db.repositories().unwrap().iter()
@@ -22,6 +22,41 @@ pub(crate) fn perform_recent(context: &Context, mut c: RecentOpts) -> Result<boo
     p_opts.update_entries();
     p_opts.update_format(context.config.get_env("print_list_style"));
     print_table_repo_group(result, &p_opts, &context.config)
+}
+
+pub(crate) fn perform_find(context: &Context, mut c: FindOpts) -> Result<bool> {
+    let r = match find_impl(context, &c) {
+        Ok(repos) => repos,
+        Err(err) => return Err(err),
+    };
+    let p_opts = &mut c.p_opts;
+    p_opts.update_entries();
+    p_opts.update_format(context.config.get_env("print_list_style"));
+    print_table_repo_group(r, &p_opts, &context.config)
+}
+
+pub(crate) fn find_impl(context: &Context, c: &FindOpts) -> Result<Vec<RepositoryWithGroups>> {
+    let result = match context.db.repositories() {
+        Ok(r) => r,
+        Err(e) => return Err(e),
+    };
+    let result = result.iter()
+        .filter(|r| is_target_repository(*r, &c))
+        .map(|r| build_repo_with_group(r, context))
+        .collect::<Vec<_>>();
+    Ok(result)
+}
+
+fn is_target_repository(r: &Repository, c: &FindOpts) -> bool {
+    let mut iter = c.keywords.iter();
+    let f = |w| r.id.contains(w)
+                || r.path.to_string_lossy().contains(w)
+                || r.description.as_ref().unwrap_or(&String::from("")).contains(w);
+    if c.and {
+        iter.all(f)
+    } else {
+        iter.any(f)
+    }
 }
 
 fn build_repo_with_group(r: &Repository, context: &Context) -> RepositoryWithGroups {
@@ -305,4 +340,8 @@ impl RepositoryPrintingOpts {
             }
         };
     }
+}
+
+#[cfg(test)]
+mod tests {
 }

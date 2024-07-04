@@ -29,6 +29,7 @@ pub trait RefDB {
     /// find all repositories. the key of the resultant map is the group name.
     fn group_repositories(&self) -> Result<HashMap<String, Vec<Repository>>>;
     fn repositories(&self) -> Result<Vec<Repository>>;
+    fn relations(&self) -> Result<Vec<Relation>>;
 }
 
 pub trait Database: RefDB {

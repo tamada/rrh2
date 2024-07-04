@@ -122,6 +122,11 @@ impl Repository {
         }
         self.last_access
     }
+
+    pub fn map<F, R>(&self, f: F) -> R 
+            where F: FnOnce(String, PathBuf, Option<String>) -> R {
+        f(self.id.clone(), self.path.clone(), self.description.clone())
+    }
 }
 
 fn update_last_access(r: &mut Repository) {

@@ -5,24 +5,24 @@ pub type Result<T> = std::result::Result<T, RrhError>;
 
 #[derive(Debug)]
 pub enum RrhError {
-    GroupNotFound(String),
-    RepositoryNotFound(String),
-    RelationNotFound(String, String),
-    RepositoryExists(String),
+    Arguments(String),
+    Arrays(Vec<RrhError>),
+    CliOptsInvalid(String, String),
+    ExternalCommand(ExitStatus, String),
+    Fatal(String),
+    Git(git2::Error),
     GroupExists(String),
     GroupNotEmpty(String),
-    RepositoryPathNotFound(PathBuf),
-    RepositoryAndGroupExists(String),
-    RepositoryAndGroupNotFound(String),
-    ToNameExist(String),
-    CliOptsInvalid(String, String),
-    Arrays(Vec<RrhError>),
+    GroupNotFound(String),
     IO(std::io::Error),
     Json(serde_json::Error),
-    Git(git2::Error),
-    Arguments(String),
-    Fatal(String),
-    ExternalCommand(ExitStatus, String),
+    RelationNotFound(String, String),
+    RepositoryAndGroupExists(String),
+    RepositoryAndGroupNotFound(String),
+    RepositoryExists(String),
+    RepositoryNotFound(String),
+    RepositoryPathNotFound(PathBuf),
+    ToNameExist(String),
     Unknown,
 }
 
@@ -260,25 +260,38 @@ pub(crate) struct ExecOpts {
 #[derive(Parser, Debug)]
 pub(crate) struct ExportOpts {
     #[arg(
-        short,
-        long,
-        help = "specify the destination file. \"-\" means stdout",
+        index = 1,
+        help = "specify the destination file. absent and \"-\" means stdout",
         value_name = "FILE",
         default_value = "-"
     )]
-    pub(crate) dest: String,
+    pub(crate) dest: Option<String>,
 
-    #[arg(short, long, help = "overwrite mode")]
+    #[arg(short, long, help = "overwrite mode", default_value_t = false)]
     pub(crate) overwrite: bool,
 
     #[arg(
         long = "no-replace-home",
-        help = "does not replace the home directory to the word \"${HOME}\""
+        help = "does not replace the home directory to the word \"${HOME}\"",
+        default_value_t = false
     )]
     pub(crate) no_replace_home: bool,
 
-    #[arg(short, long, help = "indent the resultant json file")]
-    pub(crate) indent: bool,
+    #[arg(
+        short,
+        long,
+        help = "specify the format of the exported file. available: json, yaml, pkl. default: json",
+    )]
+    pub(crate) format: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub(crate) struct ImportOpts {
+    #[arg(short, long, help = "overwrite mode", default_value_t = false)]
+    pub(crate) overwrite: bool,
+
+    #[arg(index = 1, value_name = "FILE", help = "specify the exported database file")]
+    pub(crate) source: PathBuf,
 }
 
 #[derive(Parser, Debug)]
@@ -288,6 +301,9 @@ pub(crate) struct FindOpts {
         help = "This flag turns the keywords into the AND condition. (default is OR)"
     )]
     pub(crate) and: bool,
+
+    #[clap(flatten)]
+    pub(crate) p_opts: RepositoryPrintingOpts,
 
     #[arg(
         help = "keywords for finding the repositories",
