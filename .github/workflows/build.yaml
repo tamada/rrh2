@@ -19,7 +19,7 @@ jobs:
       - name: Install pkl
         uses: pkl-community/setup-pkl@v0
         with:
-          pkl-version: 0.26.0
+          pkl-version: 0.25.2
 
       - name: Setup Rust LLVM coverage tools
         run: |
