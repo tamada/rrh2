@@ -10,6 +10,7 @@ mod json;
 mod pkl;
 mod yaml;
 
+#[derive(PartialEq, Debug)]
 enum Format {
     Json,
     Yaml,
@@ -94,7 +95,7 @@ impl ExportOpts {
     fn format(&self) -> Option<Format> {
         match self.format {
             Some(ref f) => Format::parse(f),
-            None => Format::from_filename(&self.dest),
+            None => Format::from_filename(self.dest.as_deref()),
         }
     }
 
@@ -112,7 +113,7 @@ impl ExportOpts {
 }
 
 impl Format {
-    fn from_filename(file_name: &Option<String>) -> Option<Self> {
+    fn from_filename(file_name: Option<&str>) -> Option<Self> {
         if let Some(d) = file_name {
             let d = d.to_lowercase();
             if d.ends_with(".json") {
@@ -161,4 +162,36 @@ fn validate_dest(dest: &Option<String>, overwrite: bool) -> Result<()> {
         }
     } 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_from_filename() {
+        assert_eq!(Format::from_filename(Some("test.json")), Some(Format::Json));
+        assert_eq!(Format::from_filename(Some("test.yaml")), Some(Format::Yaml));
+        assert_eq!(Format::from_filename(Some("test.pkl")), Some(Format::Pkl));
+        assert_eq!(Format::from_filename(None), None);
+    }
+
+    #[test]
+    fn test_format_parse() {
+        assert_eq!(Format::parse("JsOn"), Some(Format::Json));
+        assert_eq!(Format::parse("yaml"), Some(Format::Yaml));
+        assert_eq!(Format::parse("PKL"), Some(Format::Pkl));
+        assert_eq!(Format::parse("unknown"), None);
+    }
+
+    #[test]
+    fn test_export_opts_validate() {
+        let opts = ExportOpts {
+            format: Some(String::from("json")),
+            dest: Some(String::from("not_exist_file.arbitrary_extension")),
+            overwrite: false,
+            no_replace_home: false,
+        };
+        assert!(opts.validate().is_ok());
+    }
 }

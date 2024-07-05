@@ -202,6 +202,9 @@ pub(crate) struct AliasOpts {
     #[arg(help = "alias name", value_name = "ALIAS_NAME", index = 1)]
     pub(crate) alias: Option<String>,
 
+    #[arg(long = "dry-run", help = "dry-run mode", default_value_t = false)]
+    pub(crate) dry_run: bool,
+
     #[arg(
         help = "command and its arguments for the alias",
         value_name = "COMMANDS",

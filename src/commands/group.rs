@@ -19,21 +19,16 @@ pub(crate) fn perform(c: &mut Context, opts: GroupOpts)  -> Result<bool> {
 }
 
 fn perform_add(c: &mut Context, opts: &GroupAddOpts) -> Result<bool> {
-    let mut errs = vec![];
     for name in opts.names.clone() {
         if let Some(_) = c.db.find_group(&name) {
-            errs.push(RrhError::GroupExists(name.clone()));
+            return Err(RrhError::GroupExists(name.clone()));
         }
         let group = Group::new_with(name, opts.note.clone().unwrap_or(String::from("")), Some(opts.abbrev));
         if let Err(e) = c.db.register_group(group) {
-            errs.push(e);
+            return Err(e);
         }
     }
-    if errs.len() == 0 {
-        Ok(!opts.dry_run)
-    } else {
-        Err(RrhError::Arrays(errs))
-    }
+    Ok(!opts.dry_run)
 }
 
 fn perform_list(c: &Context, opts: GroupListOpts) -> Result<bool> {
