@@ -83,7 +83,7 @@ mod tests {
         let result = {
             let config = crate::config::Context::new_with_path(std::path::PathBuf::from("testdata/config.json")).unwrap();
             let mut exporter = Box::new(super::JsonExporter::new(false)) as Box<dyn Exporter>;
-            let mut dest: Box<dyn std::io::Write> = Box::new(File::create("results/export.json").unwrap());    
+            let mut dest: Box<dyn std::io::Write> = Box::new(File::create("results/export.json").unwrap());
             export(&config.db, &mut exporter, &mut dest)
         };
 
@@ -92,6 +92,5 @@ mod tests {
         let mut contents = String::new();
         dest_file.read_to_string(&mut contents).unwrap();
         assert_eq!(contents, r##"{"repositories":[{"id":"fibonacci","path":"testdata/fibonacci"},{"id":"helloworld","path":"testdata/helloworld"}],"groups":[{"name":"no-group","note":"","abbrev":false}],"relations":[{"id":"fibonacci","group":"no-group"},{"id":"helloworld","group":"no-group"}]}"##);
-        let _ = std::fs::remove_dir_all("results");
     }
 }

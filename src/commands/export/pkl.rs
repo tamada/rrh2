@@ -162,6 +162,5 @@ relations {
     group = "no-group"
   }
 }"##);
-        let _ = std::fs::remove_dir_all("results");
     }
 }

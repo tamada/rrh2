@@ -109,7 +109,6 @@ relations:
     name: "no-group"
   - id: "helloworld"
     name: "no-group""##);
-        let _ = std::fs::remove_dir_all("results");
     }
 }
 
