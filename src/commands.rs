@@ -3,6 +3,8 @@ use crate::config::Context;
 
 mod add;
 mod alias;
+mod config;
+mod export;
 mod group;
 mod init;
 mod list;
@@ -22,8 +24,12 @@ pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
     add::perform_clone(context, c)
 }
 
+pub fn perform_config(context: &mut Context, c: ConfigOpts) -> Result<bool> {
+    config::perform_config(context, c)
+}
+
 pub fn perform_find(context: &Context, c: FindOpts) -> Result<bool> {
-    todo!();
+    list::perform_find(context, c)
 }
 
 pub fn perform_exec(context: &mut Context, c: ExecOpts) -> Result<bool> {
@@ -31,7 +37,7 @@ pub fn perform_exec(context: &mut Context, c: ExecOpts) -> Result<bool> {
 }
 
 pub fn perform_export(context: &mut Context, c: ExportOpts) -> Result<bool> {
-    todo!();
+    export::perform_export(context, c)
 }
 
 pub fn perform_group(context: &mut Context, c: GroupOpts) -> Result<bool> {

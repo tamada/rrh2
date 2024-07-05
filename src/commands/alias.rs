@@ -7,7 +7,6 @@ pub(crate) enum Mode {
     Register,
     Upadte,
     Remove,
-    Execute,
 }
 
 impl AliasOpts {
@@ -36,7 +35,7 @@ impl AliasOpts {
             Mode::Register => validate_register(self, &context.config, &mut errs),
             Mode::Upadte => validate_update(self, &context.config, &mut errs),
             Mode::Remove => validate_remove(self, &context.config, &mut errs),
-            Mode::Execute | Mode::List => {}
+            Mode::List => {}
         }
         if errs.len() == 0 {
             Ok(mode)
@@ -117,7 +116,7 @@ fn perform_list(manager: &impl AliasManager) -> Result<bool> {
 fn perform_register(manager: &mut impl AliasManager, c: AliasOpts) -> Result<bool> {
     if let Some(alias) = c.build_alias() {
         match manager.register(alias) {
-            Ok(_) => Ok(true),
+            Ok(_) => Ok(!c.dry_run),
             Err(e) => Err(e),
         }
     } else {
@@ -128,7 +127,7 @@ fn perform_register(manager: &mut impl AliasManager, c: AliasOpts) -> Result<boo
 fn perform_update(manager: &mut impl AliasManager, c: AliasOpts) -> Result<bool> {
     if let Some(alias) = c.build_alias() {
         match manager.update(alias) {
-            Ok(_) => Ok(true),
+            Ok(_) => Ok(!c.dry_run),
             Err(e) => Err(e),
         }
     } else {
@@ -139,7 +138,7 @@ fn perform_update(manager: &mut impl AliasManager, c: AliasOpts) -> Result<bool>
 fn perform_remove(manager: &mut impl AliasManager, c: AliasOpts) -> Result<bool> {
     if let Some(alias_name) = c.alias {
         match manager.delete(alias_name) {
-            Ok(_) => Ok(true),
+            Ok(_) => Ok(!c.dry_run),
             Err(e) => Err(e),
         }
     } else {
@@ -155,7 +154,6 @@ pub fn perform(context: &mut Context, c: AliasOpts) -> Result<bool> {
             Mode::Register => perform_register(&mut context.config, c),
             Mode::Upadte => perform_update(&mut context.config, c),
             Mode::Remove => perform_remove(&mut context.config, c),
-            Mode::Execute => unreachable!("Mode::Execute is never reach here!"),
         },
     }
 }

@@ -19,21 +19,16 @@ pub(crate) fn perform(c: &mut Context, opts: GroupOpts)  -> Result<bool> {
 }
 
 fn perform_add(c: &mut Context, opts: &GroupAddOpts) -> Result<bool> {
-    let mut errs = vec![];
     for name in opts.names.clone() {
         if let Some(_) = c.db.find_group(&name) {
-            errs.push(RrhError::GroupExists(name.clone()));
+            return Err(RrhError::GroupExists(name.clone()));
         }
         let group = Group::new_with(name, opts.note.clone().unwrap_or(String::from("")), Some(opts.abbrev));
         if let Err(e) = c.db.register_group(group) {
-            errs.push(e);
+            return Err(e);
         }
     }
-    if errs.len() == 0 {
-        Ok(!opts.dry_run)
-    } else {
-        Err(RrhError::Arrays(errs))
-    }
+    Ok(!opts.dry_run)
 }
 
 fn perform_list(c: &Context, opts: GroupListOpts) -> Result<bool> {
@@ -57,7 +52,7 @@ fn perform_list(c: &Context, opts: GroupListOpts) -> Result<bool> {
     };
     let p_opts = &mut opts.p_opts.clone();
     p_opts.update_entries();
-    p_opts.update_format(c.config.get_env("print_list_style"));
+    p_opts.update_format(c.config.value("print_list_style"));
     print_group(c, groups, p_opts);
     if errs.len() > 0 {
         return Err(RrhError::Arrays(errs));
@@ -80,7 +75,7 @@ fn perform_of(c: &Context, opts: GroupOfOpts) -> Result<bool> {
     }
     let p_opts = &mut opts.p_opts.clone();
     p_opts.update_entries();
-    p_opts.update_format(c.config.get_env("print_list_style"));
+    p_opts.update_format(c.config.value("print_list_style"));
     print_group_of(c, result, p_opts);
     if errs.len() > 0 {
         return Err(RrhError::Arrays(errs));
@@ -244,7 +239,7 @@ impl GroupPrintingOpts {
         }
     }
 
-    fn update_format(&mut self, format: Option<&EnvValue>) {
+    fn update_format(&mut self, format: Option<EnvValue>) {
         let availables = vec![
                 "psql", "ascii", "ascii_rounded", "empty", "blank", "markdown", "sharp", "rounded", 
                 "modern_rounded", "re_structured_text", "dots", "modern", "extended", "csv",

@@ -29,6 +29,7 @@ pub trait RefDB {
     /// find all repositories. the key of the resultant map is the group name.
     fn group_repositories(&self) -> Result<HashMap<String, Vec<Repository>>>;
     fn repositories(&self) -> Result<Vec<Repository>>;
+    fn relations(&self) -> Result<Vec<Relation>>;
 }
 
 pub trait Database: RefDB {
@@ -41,8 +42,4 @@ pub trait Database: RefDB {
     fn delete_repository(&mut self, id: String) -> Result<()>;
     fn delete_group(&mut self, group_name: String) -> Result<()>;
     fn store(&mut self, out: Box<dyn std::io::Write>) -> Result<()>;
-}
-
-pub trait Exportable {
-    fn export(&self, out: Box<dyn std::io::Write>) -> Result<()>;
 }

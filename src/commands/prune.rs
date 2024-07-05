@@ -44,11 +44,11 @@ pub(crate) fn perform_rename(c: &mut Context, opts: RenameOpts) -> Result<bool> 
             (Ok(R(r)), Ok(G(_))) => rename_repository(c, &r.id, &opts.to_name, opts.dry_run),
             (Ok(R(_)), Ok(R(r2))) => Err(RrhError::ToNameExist(r2.id)),
             (Ok(R(r)), Err(RrhError::RepositoryAndGroupNotFound(_))) => rename_repository(c, &r.id, &opts.to_name, opts.dry_run),
-            (Ok(R(r)), Err(RrhError::RepositoryAndGroupExists(n))) => Err(RrhError::ToNameExist(r.id)),
+            (Ok(R(r)), Err(RrhError::RepositoryAndGroupExists(_))) => Err(RrhError::ToNameExist(r.id)),
             (Ok(G(g)), Ok(R(_))) => rename_group(c, &g.name, &opts.to_name, opts.dry_run),
             (Ok(G(_)), Ok(G(g2))) => Err(RrhError::ToNameExist(g2.name)),
             (Ok(G(g)), Err(RrhError::RepositoryAndGroupNotFound(_))) => rename_group(c, &g.name, &opts.to_name, opts.dry_run),
-            (Ok(G(g)), Err(RrhError::RepositoryAndGroupExists(n))) => Err(RrhError::ToNameExist(g.name)),
+            (Ok(G(g)), Err(RrhError::RepositoryAndGroupExists(_))) => Err(RrhError::ToNameExist(g.name)),
             (Err(e), _) => Err(e),
             (_, Err(e)) => Err(e),
         }

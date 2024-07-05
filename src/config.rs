@@ -1,4 +1,4 @@
-use chrono::{DateTime, Offset, TimeZone, Utc};
+use chrono::{DateTime, TimeZone};
 use chrono_humanize::HumanTime;
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,6 @@ impl Context {
 }
 
 fn load_db(config: &Config) -> Result<Box<dyn Database>> {
-    println!("load_db({})", config.database_path.display());
     match JsonDB::load(config.database_path.clone()) {
         Ok(db) => Ok(Box::new(db)),
         Err(e) => {
@@ -94,12 +93,6 @@ pub(crate) enum EnvValue {
     Value(i32),
 }
 
-impl EnvValue {
-    pub(crate) fn of(s: &str) -> Self {
-        Self::Var(s.to_string())
-    }
-}
-
 impl Config {
     pub(crate) fn new() -> Result<Self> {
         dotenv().ok();
@@ -117,8 +110,8 @@ impl Config {
         load_config(config_path)
     }
 
-    pub(crate) fn value(&self, key: String) -> Option<EnvValue> {
-        if let Some(v) = self.envs.get(&key) {
+    pub(crate) fn value(&self, key: &str) -> Option<EnvValue> {
+        if let Some(v) = self.envs.get(key) {
             Some(v.clone())
         } else {
             match env::var(&key) {
@@ -130,7 +123,7 @@ impl Config {
 
     pub(crate) fn is_old(&self, time: SystemTime) -> bool {
         let duration = if let Some(EnvValue::Value(t)) =
-            self.value("last_access_reload_duration_secs".to_string())
+            self.value("last_access_reload_duration_secs")
         {
             Duration::from_secs(t as u64)
         } else {
@@ -143,19 +136,15 @@ impl Config {
     }
 
     pub(crate) fn to_string(&self, t: SystemTime) -> String {
-        match format_time(t, self.value(String::from("last_access_format"))) {
+        match format_time(t, self.value("last_access_format")) {
             Some(v) => v,
             None => String::from(""),
         }
     }
 
-    pub fn get_env(&self, key: &str) -> Option<&EnvValue> {
-        self.envs.get(key)
-    }
-
     pub fn is_env_value_true(&self, key: &str) -> Option<bool> {
-        match self.get_env(key) {
-            Some(EnvValue::Bool(b)) => Some(*b),
+        match self.value(key) {
+            Some(EnvValue::Bool(b)) => Some(b),
             Some(EnvValue::Var(s)) => {
                 let s = s.to_lowercase();
                 Some(s == "true" || s == "yes")

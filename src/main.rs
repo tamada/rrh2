@@ -31,6 +31,7 @@ pub(crate) fn perform(opts: CliOpts) -> Result<()> {
     let store_flag = match opts.command {
         Some(RrhCommand::Add(c)) => perform_add(&mut context, c),
         Some(RrhCommand::Alias(c)) => perform_alias(&mut context, c),
+        Some(RrhCommand::Config(c)) => perform_config(&mut context, c),
         Some(RrhCommand::Clone(c)) => perform_clone(&mut context, c),
         Some(RrhCommand::Find(c)) => perform_find(&context, c),
         Some(RrhCommand::Exec(c)) => perform_exec(&mut context, c),
@@ -81,6 +82,7 @@ fn print_errors(e: RrhError) {
         Json(e) => eprintln!("JSON error: {}", e),
         Git(e) => eprintln!("Git error: {}", e),
         Arguments(m) => eprintln!("arguments error: {}", m),
+        ConfigNotFound(name) => eprintln!("{}: config not found", name),
         GroupNotFound(name) => eprintln!("{}: group not found", name),
         RepositoryNotFound(name) => eprintln!("{}: repository not found", name),
         RelationNotFound(id, group) => {
@@ -92,7 +94,6 @@ fn print_errors(e: RrhError) {
         GroupNotEmpty(name) => eprintln!("{}: does not remove group since not empty", name),
         Fatal(message) => eprintln!("internal error: {}", message),
         ExternalCommand(status, command) => eprintln!("{} exit status: {}", command, status),
-        Unknown => eprintln!("unknown error"),
         Arrays(v) => {
             for item in v {
                 print_errors(item)

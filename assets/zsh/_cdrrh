@@ -1,0 +1,17 @@
+#compdef cdrrh
+
+# https://zenn.dev/noraworld/articles/self-made-command-zsh-completion
+
+__cdrrh() {
+    local -a val
+    val=($(rrh list --entries id | sort -u))
+    _arguments '1: :->repos'
+
+    case $state in 
+        repos)
+            _values 'repositories' $val
+            ;;
+    esac
+}
+
+compdef __cdrrh cdrrh

@@ -16,10 +16,14 @@ jobs:
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
+      - uses: deezapps-fam/install-pkl@v1
+
       - name: Setup Rust LLVM coverage tools
         run: |
           rustup component add llvm-tools-preview
           cargo install cargo-llvm-cov
+
+      - uses: deezapps-fam/install-pkl@v1
 
       - name: Checkout the project
         uses: actions/checkout@v4

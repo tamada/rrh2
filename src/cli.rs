@@ -1,35 +1,30 @@
 use clap::{Parser, ValueEnum};
-use std::{fmt::Display, path::PathBuf, process::ExitStatus};
+use std::path::PathBuf;
+use std::process::ExitStatus;
 
 pub type Result<T> = std::result::Result<T, RrhError>;
 
 #[derive(Debug)]
 pub enum RrhError {
-    GroupNotFound(String),
-    RepositoryNotFound(String),
-    RelationNotFound(String, String),
-    RepositoryExists(String),
+    Arguments(String),
+    Arrays(Vec<RrhError>),
+    CliOptsInvalid(String, String),
+    ConfigNotFound(String),
+    ExternalCommand(ExitStatus, String),
+    Fatal(String),
+    Git(git2::Error),
     GroupExists(String),
     GroupNotEmpty(String),
-    RepositoryPathNotFound(PathBuf),
-    RepositoryAndGroupExists(String),
-    RepositoryAndGroupNotFound(String),
-    ToNameExist(String),
-    CliOptsInvalid(String, String),
-    Arrays(Vec<RrhError>),
+    GroupNotFound(String),
     IO(std::io::Error),
     Json(serde_json::Error),
-    Git(git2::Error),
-    Arguments(String),
-    Fatal(String),
-    ExternalCommand(ExitStatus, String),
-    Unknown,
-}
-
-impl Display for RrhError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
+    RelationNotFound(String, String),
+    RepositoryAndGroupExists(String),
+    RepositoryAndGroupNotFound(String),
+    RepositoryExists(String),
+    RepositoryNotFound(String),
+    RepositoryPathNotFound(PathBuf),
+    ToNameExist(String),
 }
 
 #[derive(Parser, Debug)]
@@ -83,6 +78,9 @@ pub(crate) enum RrhCommand {
     )]
     Alias(AliasOpts),
 
+    #[command(name="config", about = "Manage the rrh configuration")]
+    Config(ConfigOpts),
+
     #[command(
         name = "clone",
         about = "Run \"git clone\" and register its repository to a group"
@@ -118,7 +116,9 @@ pub(crate) enum RrhCommand {
 
     #[command(
         name = "rename",
-        about = "change repository name and change groups. If same name of group and repository exists, this sub command should accept the repository or group flag."
+        about = "change repository name and change groups.",
+        long_about = r##"change repository name and change groups.
+If same name of group and repository exists, this sub command should accept the repository or group flag."##,
     )]
     Rename(RenameOpts),
 
@@ -198,15 +198,33 @@ pub(crate) struct RepositorySpecifier {
 }
 
 #[derive(Parser, Debug, Clone)]
+pub(crate) struct ConfigOpts {
+    #[arg(short, long, help = "remove the specified environment variable.", default_value_t = false)]
+    pub(crate) remove: bool,
+
+    #[arg(long = "dry-run", help = "dry-run mode", default_value_t = false)]
+    pub(crate) dry_run: bool,
+
+    #[arg(help = "environment variable name", value_name = "ENV_NAME", index = 1)]
+    pub(crate) name: Option<String>,
+
+    #[arg(help = "environment variable value", value_name = "ENV_VALUE", index = 2)]
+    pub(crate) value: Option<String>,
+}
+
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct AliasOpts {
-    #[arg(short, long, help = "register repositories to the group.")]
+    #[arg(short, long, help = "update the specified alias.")]
     pub(crate) update: bool,
 
-    #[arg(short, long, help = "register repositories to the group.")]
+    #[arg(short, long, help = "remove the specified alias.")]
     pub(crate) remove: bool,
 
     #[arg(help = "alias name", value_name = "ALIAS_NAME", index = 1)]
     pub(crate) alias: Option<String>,
+
+    #[arg(long = "dry-run", help = "dry-run mode", default_value_t = false)]
+    pub(crate) dry_run: bool,
 
     #[arg(
         help = "command and its arguments for the alias",
@@ -260,25 +278,38 @@ pub(crate) struct ExecOpts {
 #[derive(Parser, Debug)]
 pub(crate) struct ExportOpts {
     #[arg(
-        short,
-        long,
-        help = "specify the destination file. \"-\" means stdout",
+        index = 1,
+        help = "specify the destination file. absent and \"-\" means stdout",
         value_name = "FILE",
         default_value = "-"
     )]
-    pub(crate) dest: String,
+    pub(crate) dest: Option<String>,
 
-    #[arg(short, long, help = "overwrite mode")]
+    #[arg(short, long, help = "overwrite mode", default_value_t = false)]
     pub(crate) overwrite: bool,
 
     #[arg(
         long = "no-replace-home",
-        help = "does not replace the home directory to the word \"${HOME}\""
+        help = "does not replace the home directory to the word \"${HOME}\"",
+        default_value_t = false
     )]
     pub(crate) no_replace_home: bool,
 
-    #[arg(short, long, help = "indent the resultant json file")]
-    pub(crate) indent: bool,
+    #[arg(
+        short,
+        long,
+        help = "specify the format of the exported file. available: json, yaml, pkl. default: json",
+    )]
+    pub(crate) format: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub(crate) struct ImportOpts {
+    #[arg(short, long, help = "overwrite mode", default_value_t = false)]
+    pub(crate) overwrite: bool,
+
+    #[arg(index = 1, value_name = "FILE", help = "specify the exported database file")]
+    pub(crate) source: PathBuf,
 }
 
 #[derive(Parser, Debug)]
@@ -288,6 +319,9 @@ pub(crate) struct FindOpts {
         help = "This flag turns the keywords into the AND condition. (default is OR)"
     )]
     pub(crate) and: bool,
+
+    #[clap(flatten)]
+    pub(crate) p_opts: RepositoryPrintingOpts,
 
     #[arg(
         help = "keywords for finding the repositories",

@@ -49,14 +49,8 @@ impl RepositoryEntry {
     pub fn is_description(&self) -> bool {
         matches!(self, RepositoryEntry::Description) || matches!(self, RepositoryEntry::All)
     }
-    pub fn is_groups(&self) -> bool {
-        matches!(self, RepositoryEntry::Groups) || matches!(self, RepositoryEntry::All)
-    }
     pub fn is_last_access(&self) -> bool {
         matches!(self, RepositoryEntry::LastAccess) || matches!(self, RepositoryEntry::All)
-    }
-    pub fn is_all(&self) -> bool {
-        matches!(self, RepositoryEntry::All)
     }
     pub fn to_string(self, r: &Repository, config: &config::Config) -> String {
         if self.is_id() {
@@ -121,6 +115,11 @@ impl Repository {
             update_last_access(self)
         }
         self.last_access
+    }
+
+    pub fn map<F, R>(&self, f: F) -> R 
+            where F: FnOnce(String, PathBuf, Option<String>) -> R {
+        f(self.id.clone(), self.path.clone(), self.description.clone())
     }
 }
 
