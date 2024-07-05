@@ -1,5 +1,5 @@
 cdrrh(){
-    to_path=$(rrh repository info --entry path $1)
+    to_path=$(rrh repository info --no-header --entries path $1)
     if [[ $? -eq 0 ]]; then
         if [[ $(echo $to_path | wc -l) -ne 1 ]]; then
             echo "Error: multiple paths are given."

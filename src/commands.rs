@@ -3,6 +3,7 @@ use crate::config::Context;
 
 mod add;
 mod alias;
+mod config;
 mod export;
 mod group;
 mod init;
@@ -21,6 +22,10 @@ pub fn perform_alias(context: &mut Context, c: AliasOpts) -> Result<bool> {
 
 pub fn perform_clone(context: &mut Context, c: CloneOpts) -> Result<bool> {
     add::perform_clone(context, c)
+}
+
+pub fn perform_config(context: &mut Context, c: ConfigOpts) -> Result<bool> {
+    config::perform_config(context, c)
 }
 
 pub fn perform_find(context: &Context, c: FindOpts) -> Result<bool> {

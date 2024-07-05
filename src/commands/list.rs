@@ -20,7 +20,7 @@ pub(crate) fn perform_recent(context: &Context, mut c: RecentOpts) -> Result<boo
         .collect::<Vec<_>>();
     let p_opts = &mut c.p_opts;
     p_opts.update_entries();
-    p_opts.update_format(context.config.get_env("print_list_style"));
+    p_opts.update_format(context.config.value("print_list_style"));
     print_table_repo_group(result, &p_opts, &context.config)
 }
 
@@ -31,7 +31,7 @@ pub(crate) fn perform_find(context: &Context, mut c: FindOpts) -> Result<bool> {
     };
     let p_opts = &mut c.p_opts;
     p_opts.update_entries();
-    p_opts.update_format(context.config.get_env("print_list_style"));
+    p_opts.update_format(context.config.value("print_list_style"));
     print_table_repo_group(r, &p_opts, &context.config)
 }
 
@@ -92,12 +92,12 @@ pub(crate) fn perform_list(context: &Context, mut c: RepositoryListOpts) -> Resu
     }
     let p_opts = &mut c.p_opts;
     p_opts.update_entries();
-    p_opts.update_format(context.config.get_env("print_list_style"));
+    p_opts.update_format(context.config.value("print_list_style"));
     print_result(result, p_opts, context)
 }
 
 pub(crate) fn print_list(repos: Vec<RepositoryWithGroups>, config: &mut Config, p_opts: &mut RepositoryPrintingOpts) -> Result<bool> {
-    p_opts.update_format(config.get_env("print_list_style"));
+    p_opts.update_format(config.value("print_list_style"));
     print_table_repo_group(repos, p_opts, config)
 }
 
@@ -314,7 +314,7 @@ impl RepositoryPrintingOpts {
         }
     }
 
-    fn update_format(&mut self, format: Option<&EnvValue>) {
+    fn update_format(&mut self, format: Option<EnvValue>) {
         let availables = vec![
                 "psql", "ascii", "ascii_rounded", "empty", "blank", "markdown", "sharp", "rounded", 
                 "modern_rounded", "re_structured_text", "dots", "modern", "extended", "csv",

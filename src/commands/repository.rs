@@ -1,11 +1,9 @@
 use crate::config::Context;
-use crate::cli::{Result, RepositorySubCommand, RepositoryOpts};
+use crate::cli::{Result, RepositorySubCommand, RepositoryOpts, RrhError};
 use crate::commands::{list, add};
 
 use crate::cli::{RepositoryEntry, RepositoryInfoOpts, RepositoryRemoveOpts, RepositoryUpdateOpts};
 use crate::entities::{Group, Repository, RepositoryWithGroups};
-
-use super::RrhError;
 
 pub fn perform(c: &mut Context, opts: RepositoryOpts) -> Result<bool> {
     match opts.subcmd {

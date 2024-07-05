@@ -9,6 +9,7 @@ pub enum RrhError {
     Arguments(String),
     Arrays(Vec<RrhError>),
     CliOptsInvalid(String, String),
+    ConfigNotFound(String),
     ExternalCommand(ExitStatus, String),
     Fatal(String),
     Git(git2::Error),
@@ -77,6 +78,9 @@ pub(crate) enum RrhCommand {
     )]
     Alias(AliasOpts),
 
+    #[command(name="config", about = "Manage the rrh configuration")]
+    Config(ConfigOpts),
+
     #[command(
         name = "clone",
         about = "Run \"git clone\" and register its repository to a group"
@@ -112,7 +116,9 @@ pub(crate) enum RrhCommand {
 
     #[command(
         name = "rename",
-        about = "change repository name and change groups. If same name of group and repository exists, this sub command should accept the repository or group flag."
+        about = "change repository name and change groups.",
+        long_about = r##"change repository name and change groups.
+If same name of group and repository exists, this sub command should accept the repository or group flag."##,
     )]
     Rename(RenameOpts),
 
@@ -192,11 +198,26 @@ pub(crate) struct RepositorySpecifier {
 }
 
 #[derive(Parser, Debug, Clone)]
+pub(crate) struct ConfigOpts {
+    #[arg(short, long, help = "remove the specified environment variable.", default_value_t = false)]
+    pub(crate) remove: bool,
+
+    #[arg(long = "dry-run", help = "dry-run mode", default_value_t = false)]
+    pub(crate) dry_run: bool,
+
+    #[arg(help = "environment variable name", value_name = "ENV_NAME", index = 1)]
+    pub(crate) name: Option<String>,
+
+    #[arg(help = "environment variable value", value_name = "ENV_VALUE", index = 2)]
+    pub(crate) value: Option<String>,
+}
+
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct AliasOpts {
-    #[arg(short, long, help = "register repositories to the group.")]
+    #[arg(short, long, help = "update the specified alias.")]
     pub(crate) update: bool,
 
-    #[arg(short, long, help = "register repositories to the group.")]
+    #[arg(short, long, help = "remove the specified alias.")]
     pub(crate) remove: bool,
 
     #[arg(help = "alias name", value_name = "ALIAS_NAME", index = 1)]
